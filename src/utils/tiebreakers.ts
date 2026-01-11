@@ -1,57 +1,96 @@
-﻿import type { ScoreRow, TeamRow } from '@/types'
+﻿import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+import { useAuth } from '@/lib/auth'
 
-// Compute totals and tie-breaker arrays for a team
-export function computeTeamScores(
-  team: TeamRow,
-  scores: ScoreRow[],
-  parPerHole: number[]
-) {
-  const byHole: Record<number, { strokes: number | null; par: number }> = {}
-  for (const s of scores) {
-    byHole[s.holenumber] = { strokes: s.strokes, par: s.par }
+export default function LoginPage() {
+  const [loading, setLoading] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
+  const nav = useNavigate()
+  const location = useLocation() as any
+  const from = location.state?.from?.pathname || '/events'
+  const { user } = useAuth()
+
+
+  useEffect(() => {
+    if (user) nav(from, { replace: true })
+  }, [user])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const id = setInterval(() => setCooldown((c) => (c > 0 ? c - 1 : 0)), 1000)
+    return () => clearInterval(id)
+  }, [cooldown])
+
+  async function sendMagicLink() {
+    const emailRe = /.+@.+\..+/i
+    if (!email || !emailRe.test(email)) {
+      toast.error('Enter a valid email')
+      return
+    }
+    try {
+      setLoading(true)
+      const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } })
+      if (error) throw error
+      toast.success('Magic link sent. Check your email.')
+      setCooldown(30)
+    } catch (e: any) {
+      toast.error(e.message)
+    } finally {
+      setLoading(false)
+    }
   }
-  const holes = parPerHole.length
-  const frontIdx = [...Array(Math.min(9, holes)).keys()].map((i) => i + 1)
-  const backIdx = holes === 18 ? [...Array(9).keys()].map((i) => i + 10) : []
 
-  const sum = (idx: number[]) =>
-    idx.reduce((acc, h) => acc + (byHole[h]?.strokes ?? 0), 0)
-  const sumPar = (idx: number[]) => idx.reduce((acc, h) => acc + (byHole[h]?.par ?? parPerHole[h - 1] ?? 4), 0)
+  return (
+    <div className="mx-auto max-w-md space-y-6">
+      <h1 className="text-xl font-semibold">Sign in</h1>
+      <p className="text-sm text-muted-foreground">For registered users, enter your email to log in. If you are a new user, enter your email and we’ll send you a one-time sign-in link. No password required.</p>
 
-  const frontStrokes = sum(frontIdx)
-  const backStrokes = sum(backIdx)
-  const totalStrokes = frontStrokes + backStrokes
-
-  const frontPar = sumPar(frontIdx)
-  const backPar = sumPar(backIdx)
-  const totalPar = frontPar + backPar
-
-  const scoreToPar = totalStrokes - totalPar
-
-  // tie-break: lower back9, then last 3 holes
-  const last3Idx = parPerHole.length >= 3
-    ? [parPerHole.length - 2, parPerHole.length - 1, parPerHole.length].map((h) => h)
-    : []
-  const last3Strokes = last3Idx.reduce((acc, h) => acc + (byHole[h]?.strokes ?? 0), 0)
-
-  return {
-    frontStrokes,
-    backStrokes,
-    totalStrokes,
-    frontPar,
-    backPar,
-    totalPar,
-    scoreToPar,
-    last3Strokes,
-  }
-}
-
-export function leaderboardSort(
-  a: ReturnType<typeof computeTeamScores>,
-  b: ReturnType<typeof computeTeamScores>
-) {
-  if (a.scoreToPar !== b.scoreToPar) return a.scoreToPar - b.scoreToPar
-  if (a.backStrokes !== b.backStrokes) return a.backStrokes - b.backStrokes
-  if (a.last3Strokes !== b.last3Strokes) return a.last3Strokes - b.last3Strokes
-  return 0
+      <div className="grid gap-3">
+        <div className="text-sm">
+          Don’t have an account yet? <a className="text-primary underline" href="/claim">Claim your profile</a> to get a magic link.
+        </div>
+        <div>
+          <Label>Email</Label>
+          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <Button variant="outline" disabled={loading || !email || cooldown > 0} onClick={sendMagicLink}>
+          {cooldown > 0 ? `Resend in ${cooldown}s` : 'Send magic link'}
+        </Button>
+        <p className="text-xs text-muted-foreground">You’ll stay signed in on this device. If you sign out or use a new device, request a new link.</p>
+        <p className="text-xs text-muted-foreground">If you don’t see the email, check your Spam/Promotions folder, or try a different email address.</p>
+      </div>
+    </div>
+  )
 }
