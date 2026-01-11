@@ -115,7 +115,13 @@ export default function LeaderboardPage() {
       const as = mode === 'net' ? a.netToPar : a.scoreToPar
       const bs = mode === 'net' ? b.netToPar : b.scoreToPar
       if (as !== bs) return as - bs
-      return a.backStrokes - b.backStrokes || a.last3Strokes - b.last3Strokes
+      // secondary and tertiary tiebreakers
+      const back = a.backStrokes - b.backStrokes
+      if (back) return back
+      const last3 = a.last3Strokes - b.last3Strokes
+      if (last3) return last3
+      // final stable fallback (prevents flicker)
+      return a.team.teamname.localeCompare(b.team.teamname)
     })
   }, [teams, scores, event, players, mode])
 
@@ -190,3 +196,4 @@ export default function LeaderboardPage() {
     </div>
   )
 }
+
