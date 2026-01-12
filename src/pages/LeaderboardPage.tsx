@@ -127,9 +127,9 @@ export default function LeaderboardPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-baseline justify-between">
+      <div className="space-y-1">
         <h1 className="text-xl font-semibold">Leaderboard</h1>
-        {event && <div className="text-sm text-muted-foreground">{event.eventname} • {event.coursename} • {formatDate(event.eventdate)}</div>}
+        {event && <div className="text-sm text-muted-foreground">{event.eventname} • {formatDate(event.eventdate)} • {event.coursename}</div>}
       </div>
 
       <div className="hidden md:block">

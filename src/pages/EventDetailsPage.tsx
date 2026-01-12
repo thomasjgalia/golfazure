@@ -100,11 +100,18 @@ export default function EventDetailsPage() {
           <Label>Par per hole</Label>
           <div className="grid grid-cols-9 gap-2 mt-2">
             {form.parperhole.map((p, i) => (
-              <Input key={i} type="number" value={p} onChange={(e) => {
-                const next = [...form.parperhole]
-                next[i] = Number(e.target.value || 4)
-                setForm({ ...form, parperhole: next })
-              }} />
+              <Input
+                key={i}
+                type="number"
+                inputMode="numeric"
+                className="px-2 py-1 text-center"
+                value={p}
+                onChange={(e) => {
+                  const next = [...form.parperhole]
+                  next[i] = Number(e.target.value || 4)
+                  setForm({ ...form, parperhole: next })
+                }}
+              />
             ))}
           </div>
         </div>

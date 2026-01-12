@@ -99,13 +99,13 @@ export default function PlayersPage() {
 
       <div className="grid gap-2">
         {players?.map((p) => (
-          <div key={p.playerid} className="flex items-center justify-between border rounded p-4 active:scale-[0.995] transition">
-            <div className="flex items-center gap-4">
-              <div className="font-medium">{p.lastname}, {p.firstname}</div>
+          <div key={p.playerid} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border rounded p-4 active:scale-[0.995] transition">
+            <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
+              <div className="font-medium truncate">{p.lastname}, {p.firstname}</div>
               <div className="text-xs text-muted-foreground">HC: {p.handicap ?? '-'}</div>
-              <div className="text-xs text-muted-foreground">{p.email ?? ''}</div>
+              <div className="text-xs text-muted-foreground break-words sm:break-normal">{p.email ?? ''}</div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 sm:shrink-0 flex-wrap">
               <Button variant="outline" onClick={() => beginEdit(p)}>Edit</Button>
               <Button variant="destructive" onClick={() => { if (confirm('Delete this player?')) remove(p.playerid) }}>Delete</Button>
             </div>
