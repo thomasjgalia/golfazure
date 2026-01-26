@@ -21,6 +21,8 @@ export type PlayerRow = {
   phone: string | null
   email: string | null
   handicap: number | null
+  profile_secret?: string
+  is_admin?: boolean
   created_at?: string
   updated_at?: string
 }
@@ -49,7 +51,7 @@ export type ScoreRow = {
 }
 
 export type NewEvent = Omit<EventRow, 'eventid' | 'created_at' | 'updated_at'>
-export type NewPlayer = Omit<PlayerRow, 'playerid' | 'created_at' | 'updated_at'>
+export type NewPlayer = Omit<PlayerRow, 'playerid' | 'created_at' | 'updated_at' | 'profile_secret'> & { profile_secret?: string }
 export type NewTeam = Omit<TeamRow, 'teamid' | 'created_at' | 'updated_at'>
 export type NewScore = Omit<ScoreRow, 'scoreid' | 'created_at' | 'updated_at' | 'scoretopar' | 'par'>
 

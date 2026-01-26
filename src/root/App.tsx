@@ -1,10 +1,11 @@
-﻿import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+﻿import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
+import { User, UserX } from 'lucide-react'
 
 export default function App() {
-  const location = useLocation()
-  const { user, signOut } = useAuth()
+  const { claimedPlayer, releaseProfile, isProfileClaimed } = useAuth()
+
   return (
     <div className="min-h-screen">
       <header className="border-b bg-white">
@@ -17,13 +18,24 @@ export default function App() {
             <NavLink to="/players" className={({ isActive }) => isActive ? 'text-primary font-medium' : 'text-muted-foreground'}>Players</NavLink>
           </nav>
           <div className="flex items-center gap-2">
-            {user ? (
+            {isProfileClaimed ? (
               <>
-                <div className="text-xs text-muted-foreground hidden md:block">{user.email}</div>
-                <Button variant="outline" onClick={signOut}>Sign out</Button>
+                <div className="text-xs text-muted-foreground hidden md:flex items-center gap-1">
+                  <User className="h-3 w-3" />
+                  {claimedPlayer?.firstname} {claimedPlayer?.lastname}
+                </div>
+                <Button variant="outline" size="sm" onClick={releaseProfile}>
+                  <UserX className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Release</span>
+                </Button>
               </>
             ) : (
-              <Link to="/login" className="text-sm text-primary">Sign in</Link>
+              <Link to="/claim">
+                <Button variant="outline" size="sm">
+                  <User className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Claim Profile</span>
+                </Button>
+              </Link>
             )}
           </div>
         </div>

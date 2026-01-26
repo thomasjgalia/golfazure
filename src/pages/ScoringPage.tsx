@@ -3,6 +3,7 @@ import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useEvent } from '@/hooks/useEvents'
 import { useTeams } from '@/hooks/useTeams'
 import { useScores } from '@/hooks/useScores'
+import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { colorForScore } from '@/utils/format'
@@ -17,11 +18,20 @@ export default function ScoringPage() {
   const eventId = Number(params.id)
   const { event } = useEvent(eventId)
   const { teams } = useTeams(eventId)
+  const { claimedPlayer, isAdmin } = useAuth()
   const [search, setSearch] = useSearchParams()
   const teamId = Number(search.get('teamId') || 0) || undefined
   const team = teams?.find((t) => t.teamid === teamId)
 
   const { scores, upsertScore, clearScore, refresh } = useScores(eventId, teamId)
+
+  // Check if claimed player can edit this team's scores
+  const canEditScores = isAdmin || (team && claimedPlayer && (
+    team.players.player1 === claimedPlayer.playerid ||
+    team.players.player2 === claimedPlayer.playerid ||
+    team.players.player3 === claimedPlayer.playerid ||
+    team.players.player4 === claimedPlayer.playerid
+  ))
 
   const par = event?.parperhole ?? []
   const holes = event?.numberofholes ?? par.length ?? 0
@@ -63,6 +73,7 @@ export default function ScoringPage() {
   async function save() {
     if (!event || !team) return
     if (event.islocked) return toast.error('Event is locked')
+    if (!canEditScores) return toast.error('You can only edit scores for your own team')
     const parVal = par[currentHole - 1] ?? 4
     await upsertScore({ eventid: event.eventid, teamid: team.teamid, playerid: null, holenumber: currentHole, strokes: strokes ?? parVal })
     await refresh()
@@ -70,6 +81,7 @@ export default function ScoringPage() {
 
   async function clear() {
     if (!event || !team) return
+    if (!canEditScores) return toast.error('You can only edit scores for your own team')
     await clearScore(event.eventid, team.teamid, currentHole, 'team')
     await refresh()
   }
@@ -80,6 +92,10 @@ export default function ScoringPage() {
     if (!event || !team) return
     if (event.islocked) {
       toast.error('Event is locked')
+      return
+    }
+    if (!canEditScores) {
+      toast.error('You can only edit scores for your own team')
       return
     }
     try {
@@ -165,15 +181,20 @@ export default function ScoringPage() {
                 <span>Total: {totalStrokes}/{totalPar} ({totalToPar > 0 ? `+${totalToPar}` : totalToPar})</span>
               </div>
             </div>
+            {!canEditScores && (
+              <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
+                {isAdmin ? 'Select a team to edit scores' : 'You can only edit scores for teams you are on'}
+              </div>
+            )}
             <div className="flex flex-wrap gap-1">
-              <Button size="sm" className="px-2" variant={strokes === ((par[currentHole - 1] ?? 4) - 2) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) - 2)}>-2</Button>
-              <Button size="sm" className="px-2" variant={strokes === ((par[currentHole - 1] ?? 4) - 1) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) - 1)}>-1</Button>
-              <Button size="sm" className="px-2" variant={strokes === (par[currentHole - 1] ?? 4) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4))}>Par</Button>
-              <Button size="sm" className="px-2" variant={strokes === ((par[currentHole - 1] ?? 4) + 1) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) + 1)}>+1</Button>
-              <Button size="sm" className="px-2" variant={strokes === ((par[currentHole - 1] ?? 4) + 2) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) + 2)}>+2</Button>
+              <Button size="sm" className="px-2" variant={strokes === ((par[currentHole - 1] ?? 4) - 2) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) - 2)} disabled={!canEditScores}>-2</Button>
+              <Button size="sm" className="px-2" variant={strokes === ((par[currentHole - 1] ?? 4) - 1) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) - 1)} disabled={!canEditScores}>-1</Button>
+              <Button size="sm" className="px-2" variant={strokes === (par[currentHole - 1] ?? 4) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4))} disabled={!canEditScores}>Par</Button>
+              <Button size="sm" className="px-2" variant={strokes === ((par[currentHole - 1] ?? 4) + 1) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) + 1)} disabled={!canEditScores}>+1</Button>
+              <Button size="sm" className="px-2" variant={strokes === ((par[currentHole - 1] ?? 4) + 2) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) + 2)} disabled={!canEditScores}>+2</Button>
             </div>
             <div className="flex items-center gap-1">
-              <Button size="sm" variant="outline" onClick={() => handleQuickSave((strokes ?? (par[currentHole - 1] ?? 4)) - 1)}>-</Button>
+              <Button size="sm" variant="outline" onClick={() => handleQuickSave((strokes ?? (par[currentHole - 1] ?? 4)) - 1)} disabled={!canEditScores}>-</Button>
               <Input
                 type="number"
                 className="w-16 h-8 text-center"
@@ -181,15 +202,16 @@ export default function ScoringPage() {
                 onChange={(e) => setStrokes(e.target.value ? Number(e.target.value) : null)}
                 onBlur={() => { if (strokes != null) handleQuickSave(strokes) }}
                 onKeyDown={(e) => { if (e.key === 'Enter' && strokes != null) handleQuickSave(strokes) }}
+                disabled={!canEditScores}
               />
-              <Button size="sm" variant="outline" onClick={() => handleQuickSave((strokes ?? (par[currentHole - 1] ?? 4)) + 1)}>+</Button>
+              <Button size="sm" variant="outline" onClick={() => handleQuickSave((strokes ?? (par[currentHole - 1] ?? 4)) + 1)} disabled={!canEditScores}>+</Button>
             </div>
 
             <div className="fixed bottom-0 left-0 right-0 border-t bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/75">
               <div className="container py-2 grid grid-cols-4 gap-2">
                 <Button variant="ghost" disabled={holes === 0} onClick={() => handleSelectHole(Math.max(1, currentHole - 1))}>Prev</Button>
-                <Button variant="outline" onClick={() => { clear(); haptic() }} disabled={!!event?.islocked}>Clear</Button>
-                <Button onClick={() => { save(); haptic() }} disabled={!!event?.islocked}>Save</Button>
+                <Button variant="outline" onClick={() => { clear(); haptic() }} disabled={!!event?.islocked || !canEditScores}>Clear</Button>
+                <Button onClick={() => { save(); haptic() }} disabled={!!event?.islocked || !canEditScores}>Save</Button>
                 <Button variant="ghost" disabled={holes === 0} onClick={() => handleSelectHole(Math.min(holes || 1, currentHole + 1))}>Next</Button>
               </div>
             </div>

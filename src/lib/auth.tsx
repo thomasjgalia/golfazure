@@ -1,52 +1,64 @@
-﻿import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import type { Session, User } from '@supabase/supabase-js'
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { PlayerRow } from '@/types'
 
-type AuthContextType = {
-  session: Session | null
-  user: User | null
-  loading: boolean
-  signOut: () => Promise<void>
+interface AuthContextType {
+  claimedPlayer: PlayerRow | null
+  claimProfile: (player: PlayerRow) => void
+  releaseProfile: () => void
+  isProfileClaimed: boolean
+  isAdmin: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null)
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+const STORAGE_KEY = 'golf_claimed_profile'
 
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [claimedPlayer, setClaimedPlayer] = useState<PlayerRow | null>(null)
+
+  // Load claimed profile from localStorage on mount
   useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      const { data } = await supabase.auth.getSession()
-      if (!mounted) return
-      setSession(data.session)
-      setUser(data.session?.user ?? null)
-      setLoading(false)
-    })()
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-    })
-    return () => {
-      mounted = false
-      sub.subscription.unsubscribe()
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      try {
+        const player = JSON.parse(stored) as PlayerRow
+        setClaimedPlayer(player)
+      } catch (error) {
+        console.error('Failed to parse stored profile:', error)
+        localStorage.removeItem(STORAGE_KEY)
+      }
     }
   }, [])
 
-  async function signOut() {
-    await supabase.auth.signOut()
+  const claimProfile = (player: PlayerRow) => {
+    setClaimedPlayer(player)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(player))
   }
 
-  const value = useMemo(() => ({ session, user, loading, signOut }), [session, user, loading])
+  const releaseProfile = () => {
+    setClaimedPlayer(null)
+    localStorage.removeItem(STORAGE_KEY)
+  }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider
+      value={{
+        claimedPlayer,
+        claimProfile,
+        releaseProfile,
+        isProfileClaimed: !!claimedPlayer,
+        isAdmin: !!claimedPlayer?.is_admin,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-  return ctx
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
 }

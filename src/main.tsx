@@ -13,7 +13,6 @@ import LeaderboardPage from './pages/LeaderboardPage'
 import PublicScoringPage from './pages/PublicScoringPage'
 import ProtectedRoute from './lib/ProtectedRoute'
 import { AuthProvider } from './lib/auth'
-import LoginPage from './pages/LoginPage'
 import ClaimProfilePage from './pages/ClaimProfilePage'
 
 const router = createBrowserRouter([
@@ -34,7 +33,6 @@ const router = createBrowserRouter([
       { path: 'leaderboard', element: <LeaderboardPage /> },
       { path: 'events/:id/scoring', element: <ScoringPage /> },
       { path: 'scoring', element: <PublicScoringPage /> },
-      { path: 'login', element: <LoginPage /> },
       { path: 'claim', element: <ClaimProfilePage /> },
     ],
   },

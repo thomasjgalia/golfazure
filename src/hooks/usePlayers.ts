@@ -36,7 +36,17 @@ export function usePlayers() {
 
   async function remove(id: number) {
     const { error } = await supabase.from('players').delete().eq('playerid', id)
-    if (error) throw error
+    if (error) {
+      console.error('Delete error:', error)
+
+      // Check if it's a foreign key constraint error
+      if (error.code === '23503' || error.message.includes('foreign key constraint')) {
+        toast.error('Cannot delete player - they are part of existing teams or events. Remove them from teams first.')
+      } else {
+        toast.error(`Failed to delete player: ${error.message}`)
+      }
+      throw error
+    }
     setPlayers((prev) => prev?.filter((p) => p.playerid !== id) ?? null)
     toast.success('Player deleted')
   }
