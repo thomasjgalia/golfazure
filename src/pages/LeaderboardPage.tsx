@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useSearchParams, Link } from 'react-router-dom'
-import { supabase } from '@/lib/supabase'
+import { api } from '@/lib/api'
 import type { EventRow, ScoreRow, TeamRow, PlayerRow } from '@/types'
 import { initials } from '@/types'
 import { colorForScore, formatDate } from '@/utils/format'
@@ -42,23 +42,26 @@ export default function LeaderboardPage() {
 
   async function fetchData() {
     if (!eventId) return
-    const [{ data: ev }, { data: tm }, { data: sc }] = await Promise.all([
-      supabase.from('events').select('*').eq('eventid', eventId).single(),
-      supabase.from('teams').select('*').eq('eventid', eventId),
-      supabase.from('scores').select('*').eq('eventid', eventId),
-    ])
-    setEvent(ev ? normalizeEvent(ev) : null)
-    const tms = (tm ?? []) as TeamRow[]
-    setTeams(tms)
-    setScores((sc ?? []) as ScoreRow[])
-    const ids = Array.from(new Set(tms.flatMap((t) => Object.values(t.players || {}).filter(Boolean) as number[])))
-    if (ids.length) {
-      const { data: pl } = await supabase.from('players').select('playerid,firstname,lastname,handicap').in('playerid', ids)
-      const map: Record<number, PlayerRow> = {}
-      for (const p of (pl ?? []) as PlayerRow[]) map[p.playerid] = p
-      setPlayers(map)
-    } else {
-      setPlayers({})
+    try {
+      const [ev, tms, sc] = await Promise.all([
+        api.get<any>(`/events/${eventId}`),
+        api.get<TeamRow[]>(`/teams?eventId=${eventId}`),
+        api.get<ScoreRow[]>(`/scores?eventId=${eventId}`),
+      ])
+      setEvent(ev ? normalizeEvent(ev) : null)
+      setTeams(tms ?? [])
+      setScores(sc ?? [])
+      const ids = Array.from(new Set((tms ?? []).flatMap((t) => Object.values(t.players || {}).filter(Boolean) as number[])))
+      if (ids.length) {
+        const pl = await api.post<PlayerRow[]>('/players/byIds', { ids })
+        const map: Record<number, PlayerRow> = {}
+        for (const p of pl ?? []) map[p.playerid] = p
+        setPlayers(map)
+      } else {
+        setPlayers({})
+      }
+    } catch {
+      // silently fail on fetch errors (e.g. network issues during polling)
     }
   }
 

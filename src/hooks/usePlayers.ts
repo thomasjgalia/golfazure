@@ -1,5 +1,5 @@
-﻿import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useEffect, useState } from 'react'
+import { api } from '@/lib/api'
 import type { NewPlayer, PlayerRow } from '@/types'
 import { toast } from 'sonner'
 
@@ -9,8 +9,12 @@ export function usePlayers() {
 
   async function fetchAll() {
     setLoading(true)
-    const { data } = await supabase.from('players').select('*').order('lastname', { ascending: true })
-    setPlayers(data as PlayerRow[])
+    try {
+      const data = await api.get<PlayerRow[]>('/players')
+      setPlayers(data)
+    } catch {
+      setPlayers(null)
+    }
     setLoading(false)
   }
 
@@ -19,36 +23,33 @@ export function usePlayers() {
   }, [])
 
   async function create(player: NewPlayer) {
-    const { data, error } = await supabase.from('players').insert(player).select('*').single()
-    if (error) throw error
-    setPlayers((prev) => (prev ? [...prev, data as PlayerRow] : [data as PlayerRow]))
+    const data = await api.post<PlayerRow>('/players', player)
+    setPlayers((prev) => (prev ? [...prev, data] : [data]))
     toast.success('Player created')
-    return data as PlayerRow
+    return data
   }
 
   async function update(id: number, patch: Partial<PlayerRow>) {
-    const { data, error } = await supabase.from('players').update(patch).eq('playerid', id).select('*').single()
-    if (error) throw error
-    setPlayers((prev) => prev?.map((p) => (p.playerid === id ? (data as PlayerRow) : p)) ?? null)
+    const data = await api.put<PlayerRow>(`/players/${id}`, patch)
+    setPlayers((prev) => prev?.map((p) => (p.playerid === id ? data : p)) ?? null)
     toast.success('Player updated')
-    return data as PlayerRow
+    return data
   }
 
   async function remove(id: number) {
-    const { error } = await supabase.from('players').delete().eq('playerid', id)
-    if (error) {
-      console.error('Delete error:', error)
-
-      // Check if it's a foreign key constraint error
-      if (error.code === '23503' || error.message.includes('foreign key constraint')) {
-        toast.error('Cannot delete player - they are part of existing teams or events. Remove them from teams first.')
+    try {
+      await api.del(`/players/${id}`)
+      setPlayers((prev) => prev?.filter((p) => p.playerid !== id) ?? null)
+      toast.success('Player deleted')
+    } catch (err: any) {
+      console.error('Delete error:', err)
+      if (err.message?.includes('Cannot delete player')) {
+        toast.error(err.message)
       } else {
-        toast.error(`Failed to delete player: ${error.message}`)
+        toast.error(`Failed to delete player: ${err.message}`)
       }
-      throw error
+      throw err
     }
-    setPlayers((prev) => prev?.filter((p) => p.playerid !== id) ?? null)
-    toast.success('Player deleted')
   }
 
   return { players, loading, refresh: fetchAll, create, update, remove }

@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 import type { EventRow } from '@/types'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import QRCode from 'react-qr-code'
-import { supabase } from '@/lib/supabase'
+import { api } from '@/lib/api'
 import { toast } from 'sonner'
 
 export default function EventDetailsPage() {
@@ -26,9 +26,8 @@ export default function EventDetailsPage() {
   async function save() {
     const formEl = form
     if (!formEl) return
-    const { data, error } = await supabase
-      .from('events')
-      .update({
+    try {
+      const data = await api.put<EventRow>(`/events/${id}`, {
         eventname: formEl.eventname,
         eventdate: formEl.eventdate,
         coursename: formEl.coursename,
@@ -40,12 +39,11 @@ export default function EventDetailsPage() {
         sharecode: formEl.sharecode,
         status: formEl.status,
       })
-      .eq('eventid', id)
-      .select('*')
-      .single()
-    if (error) return toast.error(error.message)
-    setEvent(data as EventRow)
-    toast.success('Saved')
+      setEvent(data)
+      toast.success('Saved')
+    } catch (err: any) {
+      toast.error(err.message)
+    }
   }
 
   return (

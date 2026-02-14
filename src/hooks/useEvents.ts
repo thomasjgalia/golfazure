@@ -1,5 +1,5 @@
-﻿import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useEffect, useState } from 'react'
+import { api } from '@/lib/api'
 import type { EventRow, NewEvent } from '@/types'
 import { toast } from 'sonner'
 
@@ -25,12 +25,12 @@ export function useEvents() {
 
   async function fetchAll() {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-      .order('eventdate', { ascending: false })
-    if (error) setError(error.message)
-    setEvents(((data as any[]) || []).map(normalizeEventRow))
+    try {
+      const data = await api.get<any[]>('/events')
+      setEvents(data.map(normalizeEventRow))
+    } catch (err: any) {
+      setError(err.message)
+    }
     setLoading(false)
   }
 
@@ -39,26 +39,23 @@ export function useEvents() {
   }, [])
 
   async function create(ev: NewEvent) {
-    const { data, error } = await supabase.from('events').insert(ev).select('*').single()
-    if (error) throw error
+    const data = await api.post<any>('/events', ev)
     const row = normalizeEventRow(data)
     setEvents((prev) => (prev ? [row, ...prev] : [row]))
     toast.success('Event created')
-    return data as EventRow
+    return row
   }
 
   async function update(id: number, patch: Partial<EventRow>) {
-    const { data, error } = await supabase.from('events').update(patch).eq('eventid', id).select('*').single()
-    if (error) throw error
+    const data = await api.put<any>(`/events/${id}`, patch)
     const row = normalizeEventRow(data)
     setEvents((prev) => prev?.map((e) => (e.eventid === id ? row : e)) ?? null)
     toast.success('Event updated')
-    return data as EventRow
+    return row
   }
 
   async function remove(id: number) {
-    const { error } = await supabase.from('events').delete().eq('eventid', id)
-    if (error) throw error
+    await api.del(`/events/${id}`)
     setEvents((prev) => prev?.filter((e) => e.eventid !== id) ?? null)
     toast.success('Event deleted')
   }
@@ -74,8 +71,12 @@ export function useEvent(id?: number) {
     if (!id) return
     ;(async () => {
       setLoading(true)
-      const { data } = await supabase.from('events').select('*').eq('eventid', id).single()
-      setEvent(data ? normalizeEventRow(data) : null)
+      try {
+        const data = await api.get<any>(`/events/${id}`)
+        setEvent(normalizeEventRow(data))
+      } catch {
+        setEvent(null)
+      }
       setLoading(false)
     })()
   }, [id])

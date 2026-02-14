@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '@/lib/supabase'
+import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { PlayerRow } from '@/types'
 import { Button } from '@/components/ui/button'
@@ -37,13 +37,7 @@ export default function ClaimProfilePage() {
 
   async function loadPlayers() {
     try {
-      const { data, error } = await supabase
-        .from('players')
-        .select('*')
-        .order('lastname', { ascending: true })
-        .order('firstname', { ascending: true })
-
-      if (error) throw error
+      const data = await api.get<PlayerRow[]>('/players')
       setPlayers(data || [])
     } catch (error) {
       toast.error('Failed to load players')
@@ -65,13 +59,7 @@ export default function ClaimProfilePage() {
     setLoading(true)
     try {
       // Find the selected player
-      const { data: player, error } = await supabase
-        .from('players')
-        .select('*')
-        .eq('playerid', parseInt(selectedPlayerId))
-        .single()
-
-      if (error) throw error
+      const player = await api.get<PlayerRow>(`/players/${parseInt(selectedPlayerId)}`)
 
       if (!player) {
         toast.error('Player not found')

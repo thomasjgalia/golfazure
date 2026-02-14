@@ -1,0 +1,19 @@
+{
+  "name": "golf-azure-api",
+  "version": "1.0.0",
+  "main": "dist/src/functions/*.js",
+  "scripts": {
+    "build": "tsc",
+    "prestart": "npm run build",
+    "start": "func start"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.5.0",
+    "mssql": "^11.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0",
+    "azure-functions-core-tools": "^4.0.0"
+  }
+}

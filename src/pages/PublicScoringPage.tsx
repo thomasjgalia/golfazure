@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { supabase } from '@/lib/supabase'
+import { api } from '@/lib/api'
 import type { EventRow } from '@/types'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -15,14 +15,22 @@ export default function PublicScoringPage() {
   useEffect(() => {
     ;(async () => {
       if (!codeParam) return
-      const { data } = await supabase.from('events').select('*').eq('sharecode', codeParam).single()
-      setEvent(data as EventRow)
+      try {
+        const data = await api.get<EventRow>(`/events/sharecode/${codeParam}`)
+        setEvent(data)
+      } catch {
+        setEvent(null)
+      }
     })()
   }, [codeParam])
 
   async function lookup() {
-    const { data } = await supabase.from('events').select('*').eq('sharecode', code.toUpperCase()).single()
-    if (data) setEvent(data as EventRow)
+    try {
+      const data = await api.get<EventRow>(`/events/sharecode/${code.toUpperCase()}`)
+      setEvent(data)
+    } catch {
+      setEvent(null)
+    }
   }
 
   return (
