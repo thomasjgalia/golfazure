@@ -11,6 +11,9 @@
     "@azure/functions": "^4.5.0",
     "mssql": "^11.0.0"
   },
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "devDependencies": {
     "typescript": "^5.4.0",
     "@types/node": "^20.0.0",
