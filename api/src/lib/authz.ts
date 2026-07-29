@@ -1,13 +1,15 @@
 import { HttpRequest, HttpResponseInit } from '@azure/functions'
 import { verifySession, SessionPayload } from './token'
 
-function bearerToken(req: HttpRequest): string | null {
-  const header = req.headers.get('authorization') || ''
-  return header.startsWith('Bearer ') ? header.slice(7) : null
+// Azure Static Web Apps reserves the standard Authorization header for its own
+// proxy-to-Functions auth (it overwrites client-set values), so the session token
+// travels under this custom header instead - see src/lib/api.ts.
+function sessionToken(req: HttpRequest): string | null {
+  return req.headers.get('x-session-token') || null
 }
 
 export function getSession(req: HttpRequest): SessionPayload | null {
-  return verifySession(bearerToken(req))
+  return verifySession(sessionToken(req))
 }
 
 const UNAUTHORIZED: HttpResponseInit = { status: 401, jsonBody: { message: 'Sign in required' } }

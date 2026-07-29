@@ -20,11 +20,10 @@ app.http('debug-auth-check', {
       }
     }
 
-    const authHeader = req.headers.get('authorization') || ''
-    const hasAuthHeader = authHeader.toLowerCase().startsWith('bearer ')
-    let providedTokenResult = 'no Authorization header received'
+    const token = req.headers.get('x-session-token') || ''
+    const hasAuthHeader = !!token
+    let providedTokenResult = 'no X-Session-Token header received'
     if (hasAuthHeader) {
-      const token = authHeader.slice(7)
       const payload = verifySession(token)
       providedTokenResult = payload
         ? `valid - playerid=${payload.playerid}, isAdmin=${payload.isAdmin}, expires=${new Date(payload.exp * 1000).toISOString()}`
