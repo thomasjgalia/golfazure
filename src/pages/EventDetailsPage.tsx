@@ -1,5 +1,6 @@
 ﻿import { useNavigate, useParams } from 'react-router-dom'
 import { useEvent } from '@/hooks/useEvents'
+import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,6 +16,7 @@ export default function EventDetailsPage() {
   const id = Number(params.id)
   const { event, loading, setEvent } = useEvent(id)
   const nav = useNavigate()
+  const { isAdmin } = useAuth()
 
   const [form, setForm] = useState<EventRow | null>(null)
 
@@ -50,32 +52,34 @@ export default function EventDetailsPage() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-semibold">Event Details</h1>
+        {isAdmin && (
         <div className="flex gap-2">
           <Button variant={form.islocked ? 'secondary' : 'default'} onClick={() => setForm({ ...form, islocked: !form.islocked })}>{form.islocked ? 'Unlock' : 'Lock'}</Button>
           <Button onClick={save}>Save</Button>
         </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Name</Label>
-          <Input value={form.eventname} onChange={(e) => setForm({ ...form, eventname: e.target.value })} />
+          <Input disabled={!isAdmin} value={form.eventname} onChange={(e) => setForm({ ...form, eventname: e.target.value })} />
         </div>
         <div>
           <Label>Date</Label>
-          <Input type="date" value={form.eventdate} onChange={(e) => setForm({ ...form, eventdate: e.target.value })} />
+          <Input disabled={!isAdmin} type="date" value={form.eventdate} onChange={(e) => setForm({ ...form, eventdate: e.target.value })} />
         </div>
         <div>
           <Label>Course</Label>
-          <Input value={form.coursename} onChange={(e) => setForm({ ...form, coursename: e.target.value })} />
+          <Input disabled={!isAdmin} value={form.coursename} onChange={(e) => setForm({ ...form, coursename: e.target.value })} />
         </div>
         <div>
           <Label>Tee</Label>
-          <Input value={form.tees ?? ''} onChange={(e) => setForm({ ...form, tees: e.target.value })} />
+          <Input disabled={!isAdmin} value={form.tees ?? ''} onChange={(e) => setForm({ ...form, tees: e.target.value })} />
         </div>
         <div>
           <Label>Format</Label>
-          <Select value={form.format ?? undefined} onValueChange={(v) => setForm({ ...form, format: v as EventRow['format'] })}>
+          <Select disabled={!isAdmin} value={form.format ?? undefined} onValueChange={(v) => setForm({ ...form, format: v as EventRow['format'] })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {['Scramble', 'Best Ball', 'Stroke Play', 'Match Play'].map((f) => (
@@ -86,7 +90,7 @@ export default function EventDetailsPage() {
         </div>
         <div>
           <Label>Holes</Label>
-          <Select value={String(form.numberofholes)} onValueChange={(v) => setForm({ ...form, numberofholes: Number(v) })}>
+          <Select disabled={!isAdmin} value={String(form.numberofholes)} onValueChange={(v) => setForm({ ...form, numberofholes: Number(v) })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="9">9</SelectItem>
@@ -103,6 +107,7 @@ export default function EventDetailsPage() {
                 type="number"
                 inputMode="numeric"
                 className="px-2 py-1 text-center"
+                disabled={!isAdmin}
                 value={p}
                 onChange={(e) => {
                   const next = [...form.parperhole]

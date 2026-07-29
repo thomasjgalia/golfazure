@@ -1,6 +1,7 @@
 ﻿import { useParams } from 'react-router-dom'
 import { useTeams } from '@/hooks/useTeams'
 import { usePlayers } from '@/hooks/usePlayers'
+import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogClose } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -13,6 +14,7 @@ export default function TeamsPage() {
   const eventId = Number(params.id)
   const { teams, loading, create, update, remove, refresh } = useTeams(eventId)
   const { players } = usePlayers()
+  const { isAdmin } = useAuth()
 
   const [open, setOpen] = useState(false)
   const [teamname, setTeamname] = useState('')
@@ -128,6 +130,7 @@ export default function TeamsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Teams</h1>
+        {isAdmin && (
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>Create Team</Button>
@@ -168,6 +171,7 @@ export default function TeamsPage() {
             </div>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {loading && <div>Loading...</div>}
@@ -188,10 +192,12 @@ export default function TeamsPage() {
                 </div>
                 {t.startinghole && <div className="text-xs text-muted-foreground">Start: {t.startinghole}</div>}
               </div>
+              {isAdmin && (
               <div className="mt-2 sm:mt-0 flex gap-2 w-full sm:w-auto">
                 <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => beginEdit(t)}>Edit</Button>
-                <Button size="sm" variant="destructive" className="flex-1 sm:flex-none" onClick={() => { if (confirm('Delete this team?')) remove(t.teamid) }}>Delete</Button>
+                <Button size="sm" variant="destructive" className="flex-1 sm:flex-none" onClick={async () => { if (confirm('Delete this team?')) { try { await remove(t.teamid) } catch (e: any) { alert(e.message || 'Failed to delete team') } } }}>Delete</Button>
               </div>
+              )}
             </div>
           </div>
         ))}

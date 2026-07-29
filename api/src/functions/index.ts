@@ -1,3 +1,4 @@
+import './auth'
 import './events'
 import './players'
 import './teams'

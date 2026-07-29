@@ -1,5 +1,14 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { getPool } from '../db'
+import { requireAdmin } from '../lib/authz'
+
+// Public-safe column list - never includes profile_secret (that only ever leaves the
+// server via /api/auth/claim, and only to the player who proved they know it).
+const PUBLIC_COLUMNS = 'playerid, firstname, lastname, phone, email, handicap, is_admin, created_at, updated_at'
+
+// Fields a player row may be created/updated with. is_admin is intentionally excluded -
+// promoting admins is a direct-DB operation (see ADMIN_SETUP.md), not an API call.
+const WRITABLE_FIELDS = ['firstname', 'lastname', 'phone', 'email', 'handicap', 'profile_secret']
 
 // GET /api/players
 app.http('players-list', {
@@ -9,7 +18,7 @@ app.http('players-list', {
   handler: async (_req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
     try {
       const pool = await getPool()
-      const result = await pool.request().query('SELECT * FROM players ORDER BY CAST(lastname AS NVARCHAR(MAX)) ASC')
+      const result = await pool.request().query(`SELECT ${PUBLIC_COLUMNS} FROM players ORDER BY CAST(lastname AS NVARCHAR(MAX)) ASC`)
       return { jsonBody: result.recordset }
     } catch (err: any) {
       return { status: 500, jsonBody: { message: err.message } }
@@ -27,7 +36,7 @@ app.http('players-get', {
       const pool = await getPool()
       const result = await pool.request()
         .input('id', Number(req.params.id))
-        .query('SELECT * FROM players WHERE playerid = @id')
+        .query(`SELECT ${PUBLIC_COLUMNS} FROM players WHERE playerid = @id`)
       if (!result.recordset[0]) return { status: 404, jsonBody: { message: 'Player not found' } }
       return { jsonBody: result.recordset[0] }
     } catch (err: any) {
@@ -68,6 +77,8 @@ app.http('players-create', {
   authLevel: 'anonymous',
   route: 'players',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
+    const auth = requireAdmin(req)
+    if (auth.error) return auth.error
     try {
       const pool = await getPool()
       const b = (await req.json()) as any
@@ -78,10 +89,9 @@ app.http('players-create', {
         .input('email', b.email ?? null)
         .input('handicap', b.handicap ?? null)
         .input('profile_secret', b.profile_secret ?? null)
-        .input('is_admin', b.is_admin ?? false)
         .query(`INSERT INTO players (firstname, lastname, phone, email, handicap, profile_secret, is_admin)
-                OUTPUT INSERTED.*
-                VALUES (@firstname, @lastname, @phone, @email, @handicap, @profile_secret, @is_admin)`)
+                OUTPUT ${PUBLIC_COLUMNS.split(', ').map((c) => `INSERTED.${c}`).join(', ')}
+                VALUES (@firstname, @lastname, @phone, @email, @handicap, @profile_secret, 0)`)
       return { jsonBody: result.recordset[0] }
     } catch (err: any) {
       return { status: 500, jsonBody: { message: err.message } }
@@ -95,27 +105,27 @@ app.http('players-update', {
   authLevel: 'anonymous',
   route: 'players/{id:int}',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
+    const auth = requireAdmin(req)
+    if (auth.error) return auth.error
     try {
       const pool = await getPool()
       const b = (await req.json()) as any
       const sets: string[] = []
       const request = pool.request().input('id', Number(req.params.id))
 
-      const fields: Record<string, any> = { ...b }
-      delete fields.playerid
-      delete fields.created_at
-      delete fields.updated_at
-
       let i = 0
-      for (const [key, val] of Object.entries(fields)) {
+      for (const key of WRITABLE_FIELDS) {
+        if (!(key in b)) continue
         const param = `p${i++}`
         sets.push(`${key} = @${param}`)
-        request.input(param, val)
+        request.input(param, b[key])
       }
 
       if (sets.length === 0) return { status: 400, jsonBody: { message: 'No fields to update' } }
 
-      const result = await request.query(`UPDATE players SET ${sets.join(', ')} OUTPUT INSERTED.* WHERE playerid = @id`)
+      const result = await request.query(
+        `UPDATE players SET ${sets.join(', ')} OUTPUT ${PUBLIC_COLUMNS.split(', ').map((c) => `INSERTED.${c}`).join(', ')} WHERE playerid = @id`
+      )
       if (!result.recordset[0]) return { status: 404, jsonBody: { message: 'Player not found' } }
       return { jsonBody: result.recordset[0] }
     } catch (err: any) {
@@ -130,6 +140,8 @@ app.http('players-delete', {
   authLevel: 'anonymous',
   route: 'players/{id:int}',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
+    const auth = requireAdmin(req)
+    if (auth.error) return auth.error
     try {
       const pool = await getPool()
       await pool.request()
@@ -137,7 +149,7 @@ app.http('players-delete', {
         .query('DELETE FROM players WHERE playerid = @id')
       return { jsonBody: { success: true } }
     } catch (err: any) {
-      if (err.message?.includes('REFERENCE') || err.number === 547) {
+      if (err.number === 547 || err.message?.includes('REFERENCE')) {
         return { status: 409, jsonBody: { message: 'Cannot delete player - they are part of existing teams or events. Remove them from teams first.' } }
       }
       return { status: 500, jsonBody: { message: err.message } }

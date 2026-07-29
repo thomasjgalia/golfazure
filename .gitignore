@@ -8,6 +8,7 @@ dist/
 .env
 .env.local
 .env.*.local
+api/local.settings.json
 
 # Logs
 logs/

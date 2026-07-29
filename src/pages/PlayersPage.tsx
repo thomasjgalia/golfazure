@@ -23,9 +23,13 @@ export default function PlayersPage() {
       alert('Please complete all required fields. Email must be valid. Handicap defaults to 18 and is required.')
       return
     }
-    await create({ firstname: form.firstname, lastname: form.lastname, email: form.email, phone: null, handicap: form.handicap, profile_secret: form.profile_secret })
-    setOpen(false)
-    setForm({ firstname: '', lastname: '', phone: '', email: '', handicap: 18, profile_secret: '' })
+    try {
+      await create({ firstname: form.firstname, lastname: form.lastname, email: form.email, phone: null, handicap: form.handicap, profile_secret: form.profile_secret })
+      setOpen(false)
+      setForm({ firstname: '', lastname: '', phone: '', email: '', handicap: 18, profile_secret: '' })
+    } catch (e: any) {
+      alert(e.message || 'Failed to create player')
+    }
   }
 
   function beginEdit(p: PlayerRow) {
@@ -48,15 +52,22 @@ export default function PlayersPage() {
       alert('Please complete all required fields. Email must be valid. Handicap is required.')
       return
     }
-    await update(editing.playerid, {
+    const patch: Partial<PlayerRow> = {
       firstname: editForm.firstname,
       lastname: editForm.lastname,
       email: editForm.email,
       handicap: editForm.handicap,
-      profile_secret: editForm.profile_secret,
-    })
-    setOpenEdit(false)
-    setEditing(null)
+    }
+    // Server never returns the existing secret, so an empty field means "leave it alone"
+    // rather than "clear it" - only send a new value if the admin actually typed one.
+    if (editForm.profile_secret) patch.profile_secret = editForm.profile_secret
+    try {
+      await update(editing.playerid, patch)
+      setOpenEdit(false)
+      setEditing(null)
+    } catch (e: any) {
+      alert(e.message || 'Failed to update player')
+    }
   }
 
   return (
@@ -153,8 +164,8 @@ export default function PlayersPage() {
             </div>
             <div className="col-span-2">
               <Label>Profile Secret</Label>
-              <Input type="text" placeholder="e.g., 1234 or golf" value={editForm.profile_secret ?? ''} onChange={(e) => setEditForm({ ...editForm, profile_secret: e.target.value })} />
-              <p className="text-xs text-muted-foreground mt-1">Used for claiming profile in the app</p>
+              <Input type="text" placeholder="Leave blank to keep the current secret" value={editForm.profile_secret ?? ''} onChange={(e) => setEditForm({ ...editForm, profile_secret: e.target.value })} />
+              <p className="text-xs text-muted-foreground mt-1">Used for claiming profile in the app. For security, the current secret is never shown here.</p>
             </div>
           </div>
           <div className="flex justify-end gap-2">

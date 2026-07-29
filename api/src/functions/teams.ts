@@ -1,5 +1,9 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { getPool } from '../db'
+import { requireAdmin } from '../lib/authz'
+
+// Fields a team row may be updated with (eventid is set once at creation, not editable after).
+const WRITABLE_FIELDS = ['teamname', 'players', 'startinghole']
 
 // GET /api/teams?eventId=N
 app.http('teams-list', {
@@ -31,6 +35,8 @@ app.http('teams-create', {
   authLevel: 'anonymous',
   route: 'teams',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
+    const auth = requireAdmin(req)
+    if (auth.error) return auth.error
     try {
       const pool = await getPool()
       const b = (await req.json()) as any
@@ -58,24 +64,20 @@ app.http('teams-update', {
   authLevel: 'anonymous',
   route: 'teams/{id:int}',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
+    const auth = requireAdmin(req)
+    if (auth.error) return auth.error
     try {
       const pool = await getPool()
       const b = (await req.json()) as any
       const sets: string[] = []
       const request = pool.request().input('id', Number(req.params.id))
 
-      const fields: Record<string, any> = { ...b }
-      delete fields.teamid
-      delete fields.created_at
-      delete fields.updated_at
-
-      if (fields.players !== undefined) {
-        fields.players = typeof fields.players === 'string' ? fields.players : JSON.stringify(fields.players)
-      }
-
       let i = 0
-      for (const [key, val] of Object.entries(fields)) {
+      for (const key of WRITABLE_FIELDS) {
+        if (!(key in b)) continue
         const param = `p${i++}`
+        let val = b[key]
+        if (key === 'players') val = typeof val === 'string' ? val : JSON.stringify(val)
         sets.push(`${key} = @${param}`)
         request.input(param, val)
       }
@@ -99,6 +101,8 @@ app.http('teams-delete', {
   authLevel: 'anonymous',
   route: 'teams/{id:int}',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
+    const auth = requireAdmin(req)
+    if (auth.error) return auth.error
     try {
       const pool = await getPool()
       await pool.request()

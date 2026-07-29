@@ -1,5 +1,12 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { getPool } from '../db'
+import { requireAdmin } from '../lib/authz'
+
+// Fields an event row may be created/updated with.
+const WRITABLE_FIELDS = [
+  'eventname', 'eventdate', 'coursename', 'tees', 'format',
+  'numberofholes', 'parperhole', 'islocked', 'sharecode', 'status',
+]
 
 // GET /api/events
 app.http('events-list', {
@@ -62,6 +69,8 @@ app.http('events-create', {
   authLevel: 'anonymous',
   route: 'events',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
+    const auth = requireAdmin(req)
+    if (auth.error) return auth.error
     try {
       const pool = await getPool()
       const b = (await req.json()) as any
@@ -93,24 +102,20 @@ app.http('events-update', {
   authLevel: 'anonymous',
   route: 'events/{id:int}',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
+    const auth = requireAdmin(req)
+    if (auth.error) return auth.error
     try {
       const pool = await getPool()
       const b = (await req.json()) as any
       const sets: string[] = []
       const request = pool.request().input('id', Number(req.params.id))
 
-      const fields: Record<string, any> = { ...b }
-      delete fields.eventid
-      delete fields.created_at
-      delete fields.updated_at
-
-      if (fields.parperhole !== undefined) {
-        fields.parperhole = typeof fields.parperhole === 'string' ? fields.parperhole : JSON.stringify(fields.parperhole)
-      }
-
       let i = 0
-      for (const [key, val] of Object.entries(fields)) {
+      for (const key of WRITABLE_FIELDS) {
+        if (!(key in b)) continue
         const param = `p${i++}`
+        let val = b[key]
+        if (key === 'parperhole') val = typeof val === 'string' ? val : JSON.stringify(val)
         sets.push(`${key} = @${param}`)
         request.input(param, val)
       }
@@ -132,6 +137,8 @@ app.http('events-delete', {
   authLevel: 'anonymous',
   route: 'events/{id:int}',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
+    const auth = requireAdmin(req)
+    if (auth.error) return auth.error
     try {
       const pool = await getPool()
       await pool.request()
