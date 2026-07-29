@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import QRCode from 'react-qr-code'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
+import CourseLookup from '@/components/CourseLookup'
 
 export default function EventDetailsPage() {
   const params = useParams()
@@ -59,6 +60,12 @@ export default function EventDetailsPage() {
         </div>
         )}
       </div>
+
+      {isAdmin && (
+        <CourseLookup
+          onApply={(fill) => setForm({ ...form, coursename: fill.coursename, tees: fill.tees, numberofholes: fill.numberofholes, parperhole: fill.parperhole })}
+        />
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>

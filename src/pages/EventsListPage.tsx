@@ -13,6 +13,7 @@ import { Link } from 'react-router-dom'
 import { generateShareCode } from '@/utils/shareCode'
 import QRCode from 'react-qr-code'
 import { toast } from 'sonner'
+import CourseLookup from '@/components/CourseLookup'
 
 const defaultPar = (holes: number) => Array.from({ length: holes }, () => 4)
 
@@ -120,6 +121,9 @@ export default function EventsListPage() {
                       <Input type="date" value={form.eventdate} onChange={(e) => setForm({ ...form, eventdate: e.target.value })} />
                     </div>
                   </div>
+                  <CourseLookup
+                    onApply={(fill) => setForm({ ...form, coursename: fill.coursename, tees: fill.tees, numberofholes: fill.numberofholes, parperhole: fill.parperhole })}
+                  />
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Course</Label>
