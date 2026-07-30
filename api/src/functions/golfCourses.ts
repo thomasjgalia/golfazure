@@ -96,12 +96,15 @@ app.http('golf-courses-search', {
   },
 })
 
-// GET /api/golf-courses/{id}
-// Note: golfcourseapi.com course ids are opaque alphanumeric strings, not integers.
+// GET /api/golf-courses/course/{id}
+// Note: golfcourseapi.com course ids are opaque alphanumeric strings, not integers,
+// so this can't be constrained to :int - it lives under its own /course/ segment
+// specifically so it can never collide with the /golf-courses/search route above
+// (an unconstrained {id} would otherwise also match the literal word "search").
 app.http('golf-courses-get', {
   methods: ['GET'],
   authLevel: 'anonymous',
-  route: 'golf-courses/{id}',
+  route: 'golf-courses/course/{id}',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
     const auth = requireAdmin(req)
     if (auth.error) return auth.error

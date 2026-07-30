@@ -58,7 +58,7 @@ export default function CourseLookup({ onApply }: { onApply: (fill: CourseFill) 
     setTeeIndex(null)
     setLoadingCourse(true)
     try {
-      const data = await api.get<CourseDetail>(`/golf-courses/${result.id}`)
+      const data = await api.get<CourseDetail>(`/golf-courses/course/${result.id}`)
       setCourse(data)
       setError(data.tees.length === 0 ? 'No tee/par data available for this course - enter details manually below' : null)
       if (data.tees.length === 1) {
