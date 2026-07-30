@@ -115,9 +115,11 @@ app.http('golf-courses-get', {
           id: data.id,
           name: data.course_name || data.club_name || 'Unknown course',
           tees: normalizeTees(data.tees),
-          // TEMPORARY - to see the real upstream shape while normalizeTees() is being
-          // tuned to match it. Remove once confirmed working.
-          _rawTees: data.tees,
+          // TEMPORARY - the whole upstream response, since even top-level fields
+          // (id, course_name, tees) are coming back undefined - the assumed shape
+          // is wrong somewhere more basic than just the tees structure. Remove once
+          // the real shape is confirmed and normalizeTees() is fixed to match it.
+          _raw: data,
         },
       }
     } catch (err: any) {
