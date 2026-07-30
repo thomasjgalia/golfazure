@@ -115,6 +115,9 @@ app.http('golf-courses-get', {
           id: data.id,
           name: data.course_name || data.club_name || 'Unknown course',
           tees: normalizeTees(data.tees),
+          // TEMPORARY - to see the real upstream shape while normalizeTees() is being
+          // tuned to match it. Remove once confirmed working.
+          _rawTees: data.tees,
         },
       }
     } catch (err: any) {
