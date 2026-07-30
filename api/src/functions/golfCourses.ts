@@ -109,17 +109,15 @@ app.http('golf-courses-get', {
     const auth = requireAdmin(req)
     if (auth.error) return auth.error
     try {
-      const data: UpstreamCourse = await upstreamGet(`/v1/courses/${encodeURIComponent(req.params.id)}`)
+      const raw = await upstreamGet(`/v1/courses/${encodeURIComponent(req.params.id)}`)
+      // Unlike /v1/search (which returns courses at the top level), /v1/courses/{id}
+      // wraps the course object under a "course" key.
+      const data: UpstreamCourse = raw?.course ?? raw
       return {
         jsonBody: {
           id: data.id,
           name: data.course_name || data.club_name || 'Unknown course',
           tees: normalizeTees(data.tees),
-          // TEMPORARY - the whole upstream response, since even top-level fields
-          // (id, course_name, tees) are coming back undefined - the assumed shape
-          // is wrong somewhere more basic than just the tees structure. Remove once
-          // the real shape is confirmed and normalizeTees() is fixed to match it.
-          _raw: data,
         },
       }
     } catch (err: any) {
