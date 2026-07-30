@@ -37,7 +37,8 @@ async function upstreamGet(path: string): Promise<any> {
     if (!res.ok) {
       if (res.status === 401) throw new UpstreamError('Course lookup API key was rejected', 500)
       if (res.status === 429) throw new UpstreamError('Course lookup daily limit reached, try again tomorrow', 502)
-      throw new UpstreamError(`Course lookup failed (${res.status})`, 502)
+      const detail = (await res.text().catch(() => '')).slice(0, 200)
+      throw new UpstreamError(`Course lookup failed (${res.status})${detail ? `: ${detail}` : ''}`, 502)
     }
     return await res.json()
   } catch (err: any) {
