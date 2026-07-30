@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '@/lib/api'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,8 +20,15 @@ export default function CourseLookup({ onApply }: { onApply: (fill: CourseFill) 
   const [course, setCourse] = useState<CourseDetail | null>(null)
   const [teeIndex, setTeeIndex] = useState<number | null>(null)
   const [loadingCourse, setLoadingCourse] = useState(false)
+  const skipNextSearchRef = useRef(false)
 
   useEffect(() => {
+    // Picking a result sets `query` to the course name just to show it in the box -
+    // that shouldn't re-trigger a search for the course we already just looked up.
+    if (skipNextSearchRef.current) {
+      skipNextSearchRef.current = false
+      return
+    }
     if (query.trim().length < 3) {
       setResults([])
       return
@@ -53,6 +60,7 @@ export default function CourseLookup({ onApply }: { onApply: (fill: CourseFill) 
 
   async function pickCourse(result: SearchResult) {
     setResults([])
+    skipNextSearchRef.current = true
     setQuery(result.name)
     setCourse(null)
     setTeeIndex(null)
