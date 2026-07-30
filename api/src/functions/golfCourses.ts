@@ -8,7 +8,7 @@ const UPSTREAM_BASE = 'https://api.golfcourseapi.com'
 type UpstreamHole = { par?: number; yardage?: number; handicap?: number }
 type UpstreamTee = { tee_name?: string; number_of_holes?: number; holes?: UpstreamHole[] }
 type UpstreamCourse = {
-  id: number
+  id: string | number
   club_name?: string
   course_name?: string
   location?: { address?: string; city?: string; state?: string; country?: string }
@@ -60,9 +60,11 @@ function normalizeTees(tees: UpstreamCourse['tees']): { label: string; numberOfH
   ]
   const out: { label: string; numberOfHoles: number; parPerHole: number[] }[] = []
   for (const [genderLabel, list] of groups) {
-    for (const t of list ?? []) {
-      const parPerHole = (t.holes ?? []).map((h) => Number(h.par) || 0)
-      if (!t.tee_name || parPerHole.length === 0 || parPerHole.some((p) => !p)) continue
+    if (!Array.isArray(list)) continue
+    for (const t of list) {
+      const holes = Array.isArray(t.holes) ? t.holes : []
+      const parPerHole = holes.map((h) => Number(h?.par) || 0)
+      if (!t.tee_name || parPerHole.length === 0 || parPerHole.some((p) => !Number.isFinite(p) || p <= 0)) continue
       out.push({ label: `${t.tee_name} (${genderLabel})`, numberOfHoles: t.number_of_holes || parPerHole.length, parPerHole })
     }
   }
@@ -94,15 +96,16 @@ app.http('golf-courses-search', {
 })
 
 // GET /api/golf-courses/{id}
+// Note: golfcourseapi.com course ids are opaque alphanumeric strings, not integers.
 app.http('golf-courses-get', {
   methods: ['GET'],
   authLevel: 'anonymous',
-  route: 'golf-courses/{id:int}',
+  route: 'golf-courses/{id}',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
     const auth = requireAdmin(req)
     if (auth.error) return auth.error
     try {
-      const data: UpstreamCourse = await upstreamGet(`/v1/courses/${req.params.id}`)
+      const data: UpstreamCourse = await upstreamGet(`/v1/courses/${encodeURIComponent(req.params.id)}`)
       return {
         jsonBody: {
           id: data.id,

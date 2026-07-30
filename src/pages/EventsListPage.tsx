@@ -177,7 +177,7 @@ export default function EventsListPage() {
                   <div>
                     <Label>Par per hole</Label>
                     <div className="grid grid-cols-9 gap-2 mt-2">
-                      {form.parperhole.map((p, i) => (
+                      {(Array.isArray(form.parperhole) ? form.parperhole : []).map((p, i) => (
                         <Input key={i} type="number" value={p} onChange={(e) => {
                           const next = [...form.parperhole]
                           next[i] = Number(e.target.value || 4)

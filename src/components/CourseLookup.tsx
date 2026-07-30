@@ -5,9 +5,9 @@ import { Label } from '@/components/ui/label'
 
 export type CourseFill = { coursename: string; tees: string; numberofholes: number; parperhole: number[] }
 
-type SearchResult = { id: number; name: string; location: string }
+type SearchResult = { id: string | number; name: string; location: string }
 type TeeOption = { label: string; numberOfHoles: number; parPerHole: number[] }
-type CourseDetail = { id: number; name: string; tees: TeeOption[] }
+type CourseDetail = { id: string | number; name: string; tees: TeeOption[] }
 
 // Lets an admin search golfcourseapi.com for a real course and auto-fill
 // course name / hole count / par per hole instead of typing them by hand.
@@ -44,7 +44,10 @@ export default function CourseLookup({ onApply }: { onApply: (fill: CourseFill) 
 
   function applyTee(c: CourseDetail, idx: number) {
     const tee = c.tees[idx]
-    if (!tee) return
+    if (!tee || !Array.isArray(tee.parPerHole) || tee.parPerHole.length === 0 || !Number.isFinite(tee.numberOfHoles)) {
+      setError('This tee is missing par data - enter details manually below')
+      return
+    }
     onApply({ coursename: c.name, tees: tee.label, numberofholes: tee.numberOfHoles, parperhole: tee.parPerHole })
   }
 

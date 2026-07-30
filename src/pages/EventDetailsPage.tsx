@@ -108,7 +108,7 @@ export default function EventDetailsPage() {
         <div className="col-span-2">
           <Label>Par per hole</Label>
           <div className="grid grid-cols-9 gap-2 mt-2">
-            {form.parperhole.map((p, i) => (
+            {(Array.isArray(form.parperhole) ? form.parperhole : []).map((p, i) => (
               <Input
                 key={i}
                 type="number"
