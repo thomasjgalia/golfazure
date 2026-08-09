@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useSearchParams, Link } from 'react-router-dom'
 import { api } from '@/lib/api'
 import type { EventRow, ScoreRow, TeamRow, PlayerRow } from '@/types'
@@ -20,6 +20,20 @@ function normalizeEvent(raw: any): EventRow {
   return { ...raw, parperhole: par } as EventRow
 }
 
+type Row = {
+  key: string
+  name: string
+  subtext: string
+  hcp: number
+  netToPar: number
+  scoreToPar: number
+  totalStrokes: number
+  backStrokes: number
+  last3Strokes: number
+  holesCompleted: number
+  teamIdForScore: number
+}
+
 export default function LeaderboardPage() {
   const [search] = useSearchParams()
   const location = useLocation() as any
@@ -29,6 +43,7 @@ export default function LeaderboardPage() {
   const [scores, setScores] = useState<ScoreRow[]>([])
   const [players, setPlayers] = useState<Record<number, PlayerRow>>({})
   const [mode, setMode] = useState<'actual' | 'net'>((search.get('mode') as 'actual' | 'net') || 'actual')
+  const isIndividual = event?.format === 'Stroke Play'
 
   // Build initials string in component scope so it can be used in render
   function teamMembersInitials(team: TeamRow) {
@@ -71,11 +86,25 @@ export default function LeaderboardPage() {
     return () => clearInterval(id)
   }, [eventId])
 
-  const rows = useMemo(() => {
+  const rows = useMemo<Row[]>(() => {
     if (!event) return []
     const par = event.parperhole
     const holes = event.numberofholes ?? par.length ?? 0
+    const frontIdx = [...Array(Math.min(9, holes)).keys()].map((i) => i + 1)
+    const backIdx = holes === 18 ? [...Array(9).keys()].map((i) => i + 10) : []
+    const last3Idx = par.length >= 3 ? [par.length - 2, par.length - 1, par.length] : []
 
+    function computeTotals(byHole: Record<number, number>) {
+      const holesPlayed = new Set(Object.keys(byHole).map(Number))
+      const sumStrokes = (idx: number[]) => idx.reduce((a, h) => a + (holesPlayed.has(h) ? (byHole[h] ?? 0) : 0), 0)
+      const sumPar = (idx: number[]) => idx.reduce((a, h) => a + (holesPlayed.has(h) ? (par[h - 1] ?? 4) : 0), 0)
+      const totalStrokes = sumStrokes(frontIdx) + sumStrokes(backIdx)
+      const totalPar = sumPar(frontIdx) + sumPar(backIdx)
+      const scoreToPar = totalPar > 0 ? totalStrokes - totalPar : 0
+      const backStrokes = sumStrokes(backIdx)
+      const last3Strokes = last3Idx.reduce((a, h) => a + (byHole[h] ?? 0), 0)
+      return { totalStrokes, scoreToPar, backStrokes, last3Strokes, holesCompleted: holesPlayed.size }
+    }
 
     function teamHandicapFor(team: TeamRow) {
       const ids = (Object.values(team.players || {}) as Array<number | undefined>).filter(Boolean) as number[]
@@ -89,32 +118,50 @@ export default function LeaderboardPage() {
       return +((0.20 * (hcp[0] ?? 0)) + (0.15 * (hcp[1] ?? 0)) + (0.10 * (hcp[2] ?? 0)) + (0.05 * (hcp[3] ?? 0))).toFixed(1)
     }
 
-    return teams.map((team) => {
-      // team-level strokes per hole (only count recorded holes)
-      const byHole: Record<number, number> = {}
-      for (let hole = 1; hole <= holes; hole++) {
-        const s = scores.find((s) => s.teamid === team.teamid && s.holenumber === hole && s.strokes != null)
-        if (s && s.strokes != null) byHole[hole] = s.strokes
-      }
-      const frontIdx = [...Array(Math.min(9, holes)).keys()].map((i) => i + 1)
-      const backIdx = holes === 18 ? [...Array(9).keys()].map((i) => i + 10) : []
-      const holesPlayed = new Set(Object.keys(byHole).map((k) => Number(k)))
-      const sumPlayedStrokes = (idx: number[]) => idx.reduce((a, h) => a + (holesPlayed.has(h) ? (byHole[h] ?? 0) : 0), 0)
-      const sumPlayedPar = (idx: number[]) => idx.reduce((a, h) => a + (holesPlayed.has(h) ? (par[h - 1] ?? 4) : 0), 0)
-      const frontStrokes = sumPlayedStrokes(frontIdx)
-      const backStrokes = sumPlayedStrokes(backIdx)
-      const totalStrokes = frontStrokes + backStrokes
-      const frontPar = sumPlayedPar(frontIdx)
-      const backPar = sumPlayedPar(backIdx)
-      const totalPar = frontPar + backPar
-      const scoreToPar = totalPar > 0 ? totalStrokes - totalPar : 0
-      const teamHcp = teamHandicapFor(team)
-      const netToPar = +(scoreToPar - teamHcp).toFixed(1)
-      const last3Idx = par.length >= 3 ? [par.length - 2, par.length - 1, par.length].map((h) => h) : []
-      const last3Strokes = last3Idx.reduce((a, h) => a + (byHole[h] ?? 0), 0)
-      const holesCompleted = holesPlayed.size
-      return { team, frontStrokes, backStrokes, totalStrokes, frontPar, backPar, totalPar, scoreToPar, teamHcp, netToPar, last3Strokes, holesCompleted }
-    }).sort((a, b) => {
+    let built: Row[]
+
+    if (isIndividual) {
+      // Stroke Play: teams are just playing groups - each player is ranked individually.
+      built = teams.flatMap((team) => {
+        const ids = (Object.values(team.players || {}) as Array<number | undefined>).filter(Boolean) as number[]
+        return ids.map((id) => {
+          const p = players[id]
+          const byHole: Record<number, number> = {}
+          for (const s of scores) if (s.playerid === id && s.strokes != null) byHole[s.holenumber] = s.strokes
+          const totals = computeTotals(byHole)
+          const hcp = p?.handicap ?? 0
+          const netToPar = +(totals.scoreToPar - hcp).toFixed(1)
+          return {
+            key: `p-${id}`,
+            name: p ? `${p.lastname}, ${p.firstname}` : `#${id}`,
+            subtext: team.teamname,
+            hcp,
+            netToPar,
+            teamIdForScore: team.teamid,
+            ...totals,
+          }
+        })
+      })
+    } else {
+      built = teams.map((team) => {
+        const byHole: Record<number, number> = {}
+        for (const s of scores) if (s.teamid === team.teamid && s.playerid == null && s.strokes != null) byHole[s.holenumber] = s.strokes
+        const totals = computeTotals(byHole)
+        const hcp = teamHandicapFor(team)
+        const netToPar = +(totals.scoreToPar - hcp).toFixed(1)
+        return {
+          key: `t-${team.teamid}`,
+          name: team.teamname,
+          subtext: teamMembersInitials(team),
+          hcp,
+          netToPar,
+          teamIdForScore: team.teamid,
+          ...totals,
+        }
+      })
+    }
+
+    return built.sort((a, b) => {
       const as = mode === 'net' ? a.netToPar : a.scoreToPar
       const bs = mode === 'net' ? b.netToPar : b.scoreToPar
       if (as !== bs) return as - bs
@@ -124,9 +171,13 @@ export default function LeaderboardPage() {
       const last3 = a.last3Strokes - b.last3Strokes
       if (last3) return last3
       // final stable fallback (prevents flicker)
-      return a.team.teamname.localeCompare(b.team.teamname)
+      return a.name.localeCompare(b.name)
     })
-  }, [teams, scores, event, players, mode])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teams, scores, event, players, mode, isIndividual])
+
+  const nameHeader = isIndividual ? 'Player' : 'Team'
+  const subtextHeader = isIndividual ? 'Team' : 'Players'
 
   return (
     <div className="space-y-4">
@@ -144,8 +195,8 @@ export default function LeaderboardPage() {
           <thead className="text-left text-muted-foreground">
             <tr>
               <th className="p-2">Rank</th>
-              <th className="p-2">Team</th>
-              <th className="p-2">Players</th>
+              <th className="p-2">{nameHeader}</th>
+              <th className="p-2">{subtextHeader}</th>
               <th className="p-2">Score</th>
               <th className="p-2">HCP</th>
               <th className="p-2">Holes</th>
@@ -157,17 +208,17 @@ export default function LeaderboardPage() {
             {rows.map((r, i) => {
               const shown = mode === 'net' ? r.netToPar : r.scoreToPar
               return (
-                <tr key={r.team.teamid} className="border-t">
+                <tr key={r.key} className="border-t">
                   <td className="p-2">{i + 1}</td>
-                  <td className="p-2">{r.team.teamname}</td>
-                  <td className="p-2">{teamMembersInitials(r.team)}</td>
+                  <td className="p-2">{r.name}</td>
+                  <td className="p-2">{r.subtext}</td>
                   <td className={`p-2 font-semibold ${colorForScore(shown)}`}>{shown > 0 ? `+${shown}` : shown}</td>
-                  <td className="p-2">{r.teamHcp?.toFixed?.(1) ?? r.teamHcp}</td>
+                  <td className="p-2">{r.hcp?.toFixed?.(1) ?? r.hcp}</td>
                   <td className="p-2">{r.holesCompleted}/{event?.numberofholes}</td>
                   <td className="p-2">{r.totalStrokes}</td>
                   <td className="p-2">
                     <Button size="sm" asChild>
-                      <Link to={`/events/${eventId}/scoring?teamId=${r.team.teamid}`}>Score</Link>
+                      <Link to={`/events/${eventId}/scoring?teamId=${r.teamIdForScore}`}>Score</Link>
                     </Button>
                   </td>
                 </tr>
@@ -185,21 +236,21 @@ export default function LeaderboardPage() {
         {rows.map((r, i) => {
           const shown = mode === 'net' ? r.netToPar : r.scoreToPar
           return (
-            <div key={r.team.teamid} className="border rounded p-3">
+            <div key={r.key} className="border rounded p-3">
               <div className="flex justify-between items-center gap-2">
-                <div className="font-medium">#{i + 1} {r.team.teamname}</div>
+                <div className="font-medium">#{i + 1} {r.name}</div>
                 <div className="flex items-center gap-2">
                   <div className={`font-semibold ${colorForScore(shown)}`}>{shown > 0 ? `+${shown}` : shown}</div>
                   <Button size="sm" variant="default" asChild>
-                    <Link to={`/events/${eventId}/scoring?teamId=${r.team.teamid}`}>Score</Link>
+                    <Link to={`/events/${eventId}/scoring?teamId=${r.teamIdForScore}`}>Score</Link>
                   </Button>
                 </div>
               </div>
               <div className="text-xs text-muted-foreground mt-1">
-                Players: {teamMembersInitials(r.team)}
+                {subtextHeader}: {r.subtext}
               </div>
               <div className="text-xs text-muted-foreground flex gap-4 mt-1">
-                <div>HCP {r.teamHcp?.toFixed?.(1) ?? r.teamHcp}</div>
+                <div>HCP {r.hcp?.toFixed?.(1) ?? r.hcp}</div>
                 <div>Holes {r.holesCompleted}/{event?.numberofholes}</div>
                 <div>Strokes {r.totalStrokes}</div>
               </div>
@@ -210,4 +261,3 @@ export default function LeaderboardPage() {
     </div>
   )
 }
-

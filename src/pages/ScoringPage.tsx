@@ -1,16 +1,83 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useEvent } from '@/hooks/useEvents'
 import { useTeams } from '@/hooks/useTeams'
+import { usePlayers } from '@/hooks/usePlayers'
 import { useScores } from '@/hooks/useScores'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { colorForScore } from '@/utils/format'
+import type { PlayerRow } from '@/types'
 import { toast } from 'sonner'
 
 function haptic(ms = 20) {
   try { navigator.vibrate?.(ms) } catch {}
+}
+
+// One player's score entry for the current hole - used in Stroke Play events,
+// where each player on the team is scored individually rather than as a team.
+function PlayerScoreRow({
+  player, par, strokesValue, canEdit, locked, onSave, onClear,
+}: {
+  player: PlayerRow
+  par: number
+  strokesValue: number | null
+  canEdit: boolean
+  locked: boolean
+  onSave: (strokes: number) => void
+  onClear: () => void
+}) {
+  const [strokes, setStrokes] = useState<number | null>(strokesValue)
+  useEffect(() => setStrokes(strokesValue), [strokesValue])
+
+  const toPar = strokes != null ? strokes - par : null
+  const disabled = locked || !canEdit
+
+  function quickSave(v: number) {
+    setStrokes(v)
+    haptic()
+    onSave(v)
+  }
+
+  return (
+    <div className="border rounded p-2 space-y-1">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm font-medium truncate">{player.firstname} {player.lastname}</div>
+        {toPar != null && (
+          <div className={`text-xs font-semibold ${colorForScore(toPar)}`}>
+            {strokes} ({toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : toPar})
+          </div>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {[-2, -1, 0, 1, 2].map((d) => {
+          const v = par + d
+          return (
+            <Button key={d} size="sm" className="px-2" variant={strokes === v ? 'default' : 'secondary'} disabled={disabled} onClick={() => quickSave(v)}>
+              {d === 0 ? 'Par' : d > 0 ? `+${d}` : d}
+            </Button>
+          )
+        })}
+      </div>
+      <div className="flex items-center gap-1">
+        <Button size="sm" variant="outline" disabled={disabled} onClick={() => quickSave((strokes ?? par) - 1)}>-</Button>
+        <Input
+          type="number"
+          className="w-14 h-8 text-center"
+          value={strokes ?? ''}
+          disabled={disabled}
+          onChange={(e) => setStrokes(e.target.value ? Number(e.target.value) : null)}
+          onBlur={() => { if (strokes != null) onSave(strokes) }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && strokes != null) onSave(strokes) }}
+        />
+        <Button size="sm" variant="outline" disabled={disabled} onClick={() => quickSave((strokes ?? par) + 1)}>+</Button>
+        {strokes != null && !disabled && (
+          <Button size="sm" variant="ghost" className="ml-auto text-xs text-danger" onClick={() => { setStrokes(null); onClear() }}>Clear</Button>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export default function ScoringPage() {
@@ -18,10 +85,12 @@ export default function ScoringPage() {
   const eventId = Number(params.id)
   const { event } = useEvent(eventId)
   const { teams } = useTeams(eventId)
+  const { players } = usePlayers()
   const { claimedPlayer, isAdmin } = useAuth()
   const [search, setSearch] = useSearchParams()
   const teamId = Number(search.get('teamId') || 0) || undefined
   const team = teams?.find((t) => t.teamid === teamId)
+  const isIndividual = event?.format === 'Stroke Play'
 
   const { scores, upsertScore, clearScore, refresh } = useScores(eventId, teamId)
 
@@ -32,6 +101,13 @@ export default function ScoringPage() {
     team.players.player3 === claimedPlayer.playerid ||
     team.players.player4 === claimedPlayer.playerid
   ))
+
+  const teamPlayers: PlayerRow[] = team
+    ? ([team.players.player1, team.players.player2, team.players.player3, team.players.player4]
+        .filter(Boolean) as number[])
+        .map((id) => players?.find((p) => p.playerid === id))
+        .filter(Boolean) as PlayerRow[]
+    : []
 
   const par = event?.parperhole ?? []
   const holes = event?.numberofholes ?? par.length ?? 0
@@ -66,7 +142,7 @@ export default function ScoringPage() {
   useEffect(() => {
     // load existing score for team/hole
     if (!scores || !team) return
-    const s = scores.find((s) => s.holenumber === currentHole && s.teamid === team.teamid)
+    const s = scores.find((s) => s.holenumber === currentHole && s.teamid === team.teamid && s.playerid == null)
     setStrokes(s?.strokes ?? null)
   }, [currentHole, scores, team])
 
@@ -128,8 +204,31 @@ export default function ScoringPage() {
     }
   }
 
+  async function savePlayerScore(player: PlayerRow, v: number) {
+    if (!event || !team) return
+    if (event.islocked) return toast.error('Event is locked')
+    if (!canEditScores) return toast.error('You can only edit scores for players on your team')
+    try {
+      await upsertScore({ eventid: event.eventid, teamid: team.teamid, playerid: player.playerid, holenumber: currentHole, strokes: v })
+      await refresh()
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to save score')
+    }
+  }
+
+  async function clearPlayerScore(player: PlayerRow) {
+    if (!event || !team) return
+    if (!canEditScores) return toast.error('You can only edit scores for players on your team')
+    try {
+      await clearScore(event.eventid, player.playerid, currentHole, 'player')
+      await refresh()
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to clear score')
+    }
+  }
+
   // Totals for display (only count holes that have a recorded score)
-  const teamScores = (scores ?? []).filter((s) => team && s.teamid === team.teamid)
+  const teamScores = (scores ?? []).filter((s) => team && s.teamid === team.teamid && s.playerid == null)
   const byHole: Record<number, number> = {}
   for (const s of teamScores) if (s.strokes != null) byHole[s.holenumber] = s.strokes
   const frontIdx = Array.from({ length: Math.min(9, holes) }, (_, i) => i + 1)
@@ -147,8 +246,12 @@ export default function ScoringPage() {
   const backToPar = backPar > 0 ? backStrokes - backPar : 0
   const totalToPar = totalPar > 0 ? totalStrokes - totalPar : 0
 
+  const enteredCount = teamPlayers.filter((p) =>
+    (scores ?? []).some((s) => s.playerid === p.playerid && s.holenumber === currentHole && s.strokes != null)
+  ).length
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-24">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Scoring</h1>
         {event && (
@@ -172,7 +275,104 @@ export default function ScoringPage() {
         </select>
       </div>
 
-      {team && (
+      {team && isIndividual && (
+        <>
+          <div className="border sticky top-20 z-20 bg-white rounded p-3 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-lg font-medium">Hole {currentHole} • Par {par[currentHole - 1] ?? 4}</div>
+              <div className="text-sm text-muted-foreground">{enteredCount}/{teamPlayers.length} entered</div>
+            </div>
+            {!canEditScores && (
+              <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
+                {isAdmin ? 'Select a team to edit scores' : 'You can only edit scores for players on your team'}
+              </div>
+            )}
+            <div className="space-y-2">
+              {teamPlayers.map((p) => {
+                const s = scores?.find((s) => s.playerid === p.playerid && s.holenumber === currentHole)
+                return (
+                  <PlayerScoreRow
+                    key={p.playerid}
+                    player={p}
+                    par={par[currentHole - 1] ?? 4}
+                    strokesValue={s?.strokes ?? null}
+                    canEdit={!!canEditScores}
+                    locked={!!event?.islocked}
+                    onSave={(v) => savePlayerScore(p, v)}
+                    onClear={() => clearPlayerScore(p)}
+                  />
+                )
+              })}
+              {teamPlayers.length === 0 && (
+                <div className="text-sm text-muted-foreground">This team has no players assigned yet.</div>
+              )}
+            </div>
+
+            <div className="fixed bottom-0 left-0 right-0 border-t bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/75">
+              <div className="container py-2 grid grid-cols-2 gap-2">
+                <Button variant="ghost" disabled={holes === 0} onClick={() => setCurrentHole(Math.max(1, currentHole - 1))}>Prev</Button>
+                <Button variant="ghost" disabled={holes === 0} onClick={() => setCurrentHole(Math.min(holes || 1, currentHole + 1))}>Next</Button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="text-sm font-medium mb-1">Scorecard</div>
+            <div className="overflow-x-auto border rounded">
+              <table className="text-xs">
+                <thead>
+                  <tr className="bg-muted/50">
+                    <th className="p-1.5 text-left sticky left-0 bg-muted/50 whitespace-nowrap">Player</th>
+                    {holeNumbers.map((h) => (
+                      <th key={h} className="p-1.5 text-center w-8">{h}</th>
+                    ))}
+                    <th className="p-1.5 text-center font-semibold">Tot</th>
+                  </tr>
+                  <tr className="text-muted-foreground">
+                    <th className="p-1.5 text-left sticky left-0 bg-white whitespace-nowrap">Par</th>
+                    {holeNumbers.map((h) => (
+                      <th key={h} className="p-1.5 text-center font-normal">{par[h - 1] ?? 4}</th>
+                    ))}
+                    <th className="p-1.5 text-center">{holeNumbers.reduce((a, h) => a + (par[h - 1] ?? 4), 0)}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teamPlayers.map((p) => {
+                    const pByHole: Record<number, number> = {}
+                    for (const s of scores ?? []) {
+                      if (s.playerid === p.playerid && s.strokes != null) pByHole[s.holenumber] = s.strokes
+                    }
+                    const playedCount = Object.keys(pByHole).length
+                    const total = holeNumbers.reduce((a, h) => a + (pByHole[h] ?? 0), 0)
+                    return (
+                      <tr key={p.playerid} className="border-t">
+                        <td className="p-1.5 font-medium truncate sticky left-0 bg-white whitespace-nowrap">{p.firstname} {p.lastname[0]}.</td>
+                        {holeNumbers.map((h) => {
+                          const v = pByHole[h]
+                          const parVal = par[h - 1] ?? 4
+                          const toPar = v != null ? v - parVal : null
+                          return (
+                            <td
+                              key={h}
+                              className={`p-1.5 text-center cursor-pointer ${h === currentHole ? 'ring-2 ring-inset ring-primary' : ''} ${toPar == null ? '' : colorForScore(toPar)}`}
+                              onClick={() => setCurrentHole(h)}
+                            >
+                              {v ?? '-'}
+                            </td>
+                          )
+                        })}
+                        <td className="p-1.5 text-center font-semibold">{playedCount > 0 ? total : '-'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {team && !isIndividual && (
         <>
           <div className="border sticky top-20 z-20 bg-white rounded p-3 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -225,7 +425,7 @@ export default function ScoringPage() {
             </div>
             <div className="grid grid-cols-3 sm:grid-cols-9 gap-2">
               {frontIdx.map((h) => {
-                const s = scores?.find((s) => s.holenumber === h && s.teamid === team.teamid)
+                const s = scores?.find((s) => s.holenumber === h && s.teamid === team.teamid && s.playerid == null)
                 const parVal = par[h - 1] ?? 4
                 const strokesVal = s?.strokes ?? null
                 const toPar = strokesVal != null ? strokesVal - parVal : null
@@ -259,7 +459,7 @@ export default function ScoringPage() {
                 </div>
               <div className="grid grid-cols-3 sm:grid-cols-9 gap-2">
                                 {backIdx.map((h) => {
-                const s = scores?.find((s) => s.holenumber === h && s.teamid === team.teamid)
+                const s = scores?.find((s) => s.holenumber === h && s.teamid === team.teamid && s.playerid == null)
                 const parVal = par[h - 1] ?? 4
                 const strokesVal = s?.strokes ?? null
                 const toPar = strokesVal != null ? strokesVal - parVal : null
@@ -289,8 +489,6 @@ export default function ScoringPage() {
         </div>
         </>
       )}
-
-
     </div>
   )
 }
