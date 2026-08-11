@@ -71,6 +71,18 @@ export default function PlayersPage() {
     }
   }
 
+  async function deleteEditing() {
+    if (!editing) return
+    if (!confirm('Delete this player?')) return
+    try {
+      await remove(editing.playerid)
+      setOpenEdit(false)
+      setEditing(null)
+    } catch {
+      // error toast already shown by remove()
+    }
+  }
+
   const bottomBarNode = useMemo(() => {
     if (!isAdmin) return null
     return (
@@ -128,22 +140,16 @@ export default function PlayersPage() {
 
       {loading && <div>Loading...</div>}
 
-      <div className="grid gap-2">
+      <div className="grid gap-1.5">
         {players?.map((p) => (
-          <div key={p.playerid} className="border rounded p-3 active:scale-[0.995] transition">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{p.lastname}, {p.firstname}</div>
-                <div className="text-xs text-muted-foreground break-all">{p.email ?? ''}</div>
-                <div className="text-xs text-muted-foreground">HC: {p.handicap ?? '-'}</div>
-              </div>
-              {isAdmin && (
-                <div className="mt-2 sm:mt-0 flex gap-2 w-full sm:w-auto">
-                  <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => beginEdit(p)}>Edit</Button>
-                  <Button size="sm" variant="destructive" className="flex-1 sm:flex-none" onClick={() => { if (confirm('Delete this player?')) remove(p.playerid) }}>Delete</Button>
-                </div>
-              )}
+          <div key={p.playerid} className="border rounded px-3 py-1.5 flex items-center justify-between gap-2 active:scale-[0.995] transition">
+            <div className="min-w-0 flex items-baseline gap-2">
+              <span className="font-medium truncate">{p.lastname}, {p.firstname}</span>
+              <span className="text-xs text-muted-foreground shrink-0">HC {p.handicap ?? '-'}</span>
             </div>
+            {isAdmin && (
+              <Button size="sm" variant="outline" className="h-7 px-2 text-xs shrink-0" onClick={() => beginEdit(p)}>Edit</Button>
+            )}
           </div>
         ))}
       </div>
@@ -178,11 +184,14 @@ export default function PlayersPage() {
               <p className="text-xs text-muted-foreground mt-1">Used for claiming profile in the app. For security, the current secret is never shown here.</p>
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button onClick={saveEdit}>Save</Button>
+          <div className="flex justify-between gap-2">
+            <Button variant="destructive" onClick={deleteEditing}>Delete</Button>
+            <div className="flex gap-2">
+              <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button onClick={saveEdit}>Save</Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
