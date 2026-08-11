@@ -49,6 +49,17 @@ export default function EventDetailsPage() {
     }
   }
 
+  async function deleteEvent() {
+    if (!confirm('Delete this event? This cannot be undone.')) return
+    try {
+      await api.del(`/events/${id}`)
+      toast.success('Event deleted')
+      nav('/events')
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete event')
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -57,6 +68,7 @@ export default function EventDetailsPage() {
         <div className="flex gap-2">
           <Button variant={form.islocked ? 'secondary' : 'default'} onClick={() => setForm({ ...form, islocked: !form.islocked })}>{form.islocked ? 'Unlock' : 'Lock'}</Button>
           <Button onClick={save}>Save</Button>
+          <Button variant="destructive" onClick={deleteEvent}>Delete</Button>
         </div>
         )}
       </div>

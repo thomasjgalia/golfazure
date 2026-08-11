@@ -19,7 +19,7 @@ import CourseLookup from '@/components/CourseLookup'
 const defaultPar = (holes: number) => Array.from({ length: holes }, () => 4)
 
 export default function EventsListPage() {
-  const { events, loading, create, remove } = useEvents()
+  const { events, loading, create } = useEvents()
   const { isAdmin } = useAuth()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<NewEvent>(() => ({
@@ -46,15 +46,6 @@ export default function EventsListPage() {
       setOpen(false)
     } catch (e: any) {
       toast.error(e.message || 'Failed to create event')
-    }
-  }
-
-  async function onDelete(ev: EventRow) {
-    if (!confirm('Delete this event?')) return
-    try {
-      await remove(ev.eventid)
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to delete event')
     }
   }
 
@@ -182,31 +173,28 @@ export default function EventsListPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {events?.map((ev) => (
           <Card key={ev.eventid} className="active:scale-[0.995] transition">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="flex items-center justify-between text-base">
                 <span>{ev.eventname}</span>
-                <span className="text-xs text-muted-foreground">{ev.status}</span>
+                <span className="text-xs font-normal text-muted-foreground">{ev.status}</span>
               </CardTitle>
               <CardDescription>{ev.coursename} • {formatDate(ev.eventdate)}</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between text-sm">
+            <CardContent className="px-4 pb-2 pt-0 text-sm">
+              <div className="flex items-center justify-between">
                 <div>Holes: {ev.numberofholes}</div>
                 <div>Tees: {ev.tees ?? '-'}</div>
               </div>
-              <div className="mt-2 text-sm">Format: {ev.format ?? '-'}</div>
-              <div className="mt-2 text-xs text-muted-foreground">Share code: {ev.sharecode}</div>
+              <div className="mt-1">Format: {ev.format ?? '-'}</div>
+              <div className="mt-1 text-xs text-muted-foreground">Share code: {ev.sharecode}</div>
             </CardContent>
-            <CardFooter className="justify-between">
-              <div className="flex flex-wrap gap-2">
-                <Button asChild variant="outline"><Link to={`/events/${ev.eventid}`}>Details</Link></Button>
-                <Button asChild variant="outline"><Link to={`/events/${ev.eventid}/teams`}>Teams</Link></Button>
-                <Button asChild variant="outline"><Link to={`/events/${ev.eventid}/scoring`}>Scoring</Link></Button>
-                <Button asChild variant="outline"><Link to={`/leaderboard?eventId=${ev.eventid}`}>Leaderboard</Link></Button>
+            <CardFooter className="p-4 pt-2">
+              <div className="grid grid-cols-2 gap-2 w-full">
+                <Button asChild variant="outline" size="sm"><Link to={`/events/${ev.eventid}`}>Details</Link></Button>
+                <Button asChild variant="outline" size="sm"><Link to={`/events/${ev.eventid}/teams`}>Teams</Link></Button>
+                <Button asChild variant="outline" size="sm"><Link to={`/events/${ev.eventid}/scoring`}>Scoring</Link></Button>
+                <Button asChild variant="outline" size="sm"><Link to={`/leaderboard?eventId=${ev.eventid}`}>Leaderboard</Link></Button>
               </div>
-              {isAdmin && (
-                <Button variant="destructive" onClick={() => onDelete(ev)}>Delete</Button>
-              )}
             </CardFooter>
           </Card>
         ))}
