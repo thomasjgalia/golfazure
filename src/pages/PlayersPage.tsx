@@ -20,12 +20,12 @@ export default function PlayersPage() {
 
   async function submit() {
     const emailRe = /.+@.+\..+/i
-    if (!form.firstname.trim() || !form.lastname.trim() || !form.email || !emailRe.test(form.email) || form.handicap == null) {
-      alert('Please complete all required fields. Email must be valid. Handicap defaults to 18 and is required.')
+    if (!form.firstname.trim() || !form.lastname.trim() || (form.email && !emailRe.test(form.email)) || form.handicap == null) {
+      alert('Please complete all required fields. Email, if provided, must be valid. Handicap defaults to 18 and is required.')
       return
     }
     try {
-      await create({ firstname: form.firstname, lastname: form.lastname, email: form.email, phone: null, handicap: form.handicap, profile_secret: form.profile_secret })
+      await create({ firstname: form.firstname, lastname: form.lastname, email: form.email || null, phone: null, handicap: form.handicap, profile_secret: form.profile_secret })
       setOpen(false)
       setForm({ firstname: '', lastname: '', phone: '', email: '', handicap: 18, profile_secret: '' })
     } catch (e: any) {
@@ -49,14 +49,14 @@ export default function PlayersPage() {
   async function saveEdit() {
     if (!editing) return
     const emailRe = /.+@.+\..+/i
-    if (!editForm.firstname.trim() || !editForm.lastname.trim() || !editForm.email || !emailRe.test(editForm.email) || editForm.handicap == null) {
-      alert('Please complete all required fields. Email must be valid. Handicap is required.')
+    if (!editForm.firstname.trim() || !editForm.lastname.trim() || (editForm.email && !emailRe.test(editForm.email)) || editForm.handicap == null) {
+      alert('Please complete all required fields. Email, if provided, must be valid. Handicap is required.')
       return
     }
     const patch: Partial<PlayerRow> = {
       firstname: editForm.firstname,
       lastname: editForm.lastname,
-      email: editForm.email,
+      email: editForm.email || null,
       handicap: editForm.handicap,
     }
     // Server never returns the existing secret, so an empty field means "leave it alone"
@@ -95,8 +95,8 @@ export default function PlayersPage() {
               <Input required value={form.lastname} onChange={(e) => setForm({ ...form, lastname: e.target.value })} />
             </div>
             <div>
-              <Label>Email *</Label>
-              <Input required type="email" value={form.email ?? ''} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              <Label>Email</Label>
+              <Input type="email" value={form.email ?? ''} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </div>
             <div>
               <Label>Handicap</Label>
@@ -164,8 +164,8 @@ export default function PlayersPage() {
               <Input required value={editForm.lastname} onChange={(e) => setEditForm({ ...editForm, lastname: e.target.value })} />
             </div>
             <div>
-              <Label>Email *</Label>
-              <Input required type="email" value={editForm.email ?? ''} onChange={(e) => setEditForm({ ...editForm, email: e.target.value || '' })} />
+              <Label>Email</Label>
+              <Input type="email" value={editForm.email ?? ''} onChange={(e) => setEditForm({ ...editForm, email: e.target.value || '' })} />
             </div>
 
             <div>
