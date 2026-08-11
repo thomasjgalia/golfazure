@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useEvents } from '@/hooks/useEvents'
 import type { EventRow, NewEvent } from '@/types'
 import { useAuth } from '@/lib/auth'
+import { useBottomBar } from '@/lib/bottomBar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -57,8 +58,123 @@ export default function EventsListPage() {
     }
   }
 
+  const bottomBarNode = useMemo(() => {
+    if (!isAdmin) return null
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <div className="grid grid-cols-1">
+          <DialogTrigger asChild>
+            <Button>Create Event</Button>
+          </DialogTrigger>
+        </div>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Event</DialogTitle>
+            <DialogDescription>Configure event details</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Event name</Label>
+                <Input value={form.eventname} onChange={(e) => setForm({ ...form, eventname: e.target.value })} />
+              </div>
+              <div>
+                <Label>Date</Label>
+                <Input type="date" value={form.eventdate} onChange={(e) => setForm({ ...form, eventdate: e.target.value })} />
+              </div>
+            </div>
+            <CourseLookup
+              onApply={(fill) => setForm({ ...form, coursename: fill.coursename, tees: fill.tees, numberofholes: fill.numberofholes, parperhole: fill.parperhole })}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Course</Label>
+                <Input value={form.coursename} onChange={(e) => setForm({ ...form, coursename: e.target.value })} />
+              </div>
+              <div>
+                <Label>Tee color</Label>
+                <Input value={form.tees ?? ''} onChange={(e) => setForm({ ...form, tees: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label>Format</Label>
+                <Select value={form.format ?? undefined} onValueChange={(v) => setForm({ ...form, format: v as EventRow['format'] })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select format" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {['Scramble', 'Best Ball', 'Stroke Play', 'Match Play'].map((f) => (
+                      <SelectItem key={f} value={f}>{f}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Holes</Label>
+                <Select value={String(form.numberofholes)} onValueChange={(v) => onHolesChange(Number(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="9">9</SelectItem>
+                    <SelectItem value="18">18</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Status</Label>
+                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as EventRow['status'] })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {['Upcoming', 'In Progress', 'Completed'].map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label>Par per hole</Label>
+              <div className="grid grid-cols-9 gap-2 mt-2">
+                {(Array.isArray(form.parperhole) ? form.parperhole : []).map((p, i) => (
+                  <Input key={i} type="number" value={p} onChange={(e) => {
+                    const next = [...form.parperhole]
+                    next[i] = Number(e.target.value || 4)
+                    setForm({ ...form, parperhole: next })
+                  }} />
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Share code</Label>
+                <Input value={form.sharecode} onChange={(e) => setForm({ ...form, sharecode: e.target.value.toUpperCase() })} />
+              </div>
+              <div className="flex items-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setForm({ ...form, sharecode: generateShareCode(6) })}>Regenerate</Button>
+                <div className="bg-white p-2 rounded border"><QRCode value={window.location.origin + '/scoring?code=' + form.sharecode} size={64} /></div>
+              </div>
+            </div>
+          </div>
+          <DFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button onClick={onSubmit}>Create</Button>
+          </DFooter>
+        </DialogContent>
+      </Dialog>
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, open, form])
+
+  useBottomBar(bottomBarNode)
+
   return (
-    <div className="space-y-4 pb-24">
+    <div className="space-y-4">
       <h1 className="text-xl font-semibold">Events</h1>
 
       {loading && <div>Loading...</div>}
@@ -95,119 +211,6 @@ export default function EventsListPage() {
           </Card>
         ))}
       </div>
-
-      {isAdmin && (
-        <div className="fixed bottom-0 left-0 right-0 border-t bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/75">
-          <div className="container py-2">
-            <Dialog open={open} onOpenChange={setOpen}>
-              <div className="grid grid-cols-1">
-                <DialogTrigger asChild>
-                  <Button>Create Event</Button>
-                </DialogTrigger>
-              </div>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>New Event</DialogTitle>
-                  <DialogDescription>Configure event details</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-2">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Event name</Label>
-                      <Input value={form.eventname} onChange={(e) => setForm({ ...form, eventname: e.target.value })} />
-                    </div>
-                    <div>
-                      <Label>Date</Label>
-                      <Input type="date" value={form.eventdate} onChange={(e) => setForm({ ...form, eventdate: e.target.value })} />
-                    </div>
-                  </div>
-                  <CourseLookup
-                    onApply={(fill) => setForm({ ...form, coursename: fill.coursename, tees: fill.tees, numberofholes: fill.numberofholes, parperhole: fill.parperhole })}
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Course</Label>
-                      <Input value={form.coursename} onChange={(e) => setForm({ ...form, coursename: e.target.value })} />
-                    </div>
-                    <div>
-                      <Label>Tee color</Label>
-                      <Input value={form.tees ?? ''} onChange={(e) => setForm({ ...form, tees: e.target.value })} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label>Format</Label>
-                      <Select value={form.format ?? undefined} onValueChange={(v) => setForm({ ...form, format: v as EventRow['format'] })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select format" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {['Scramble', 'Best Ball', 'Stroke Play', 'Match Play'].map((f) => (
-                            <SelectItem key={f} value={f}>{f}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Holes</Label>
-                      <Select value={String(form.numberofholes)} onValueChange={(v) => onHolesChange(Number(v))}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="9">9</SelectItem>
-                          <SelectItem value="18">18</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Status</Label>
-                      <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as EventRow['status'] })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {['Upcoming', 'In Progress', 'Completed'].map((s) => (
-                            <SelectItem key={s} value={s}>{s}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Par per hole</Label>
-                    <div className="grid grid-cols-9 gap-2 mt-2">
-                      {(Array.isArray(form.parperhole) ? form.parperhole : []).map((p, i) => (
-                        <Input key={i} type="number" value={p} onChange={(e) => {
-                          const next = [...form.parperhole]
-                          next[i] = Number(e.target.value || 4)
-                          setForm({ ...form, parperhole: next })
-                        }} />
-                      ))}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Share code</Label>
-                      <Input value={form.sharecode} onChange={(e) => setForm({ ...form, sharecode: e.target.value.toUpperCase() })} />
-                    </div>
-                    <div className="flex items-end gap-2">
-                      <Button type="button" variant="outline" onClick={() => setForm({ ...form, sharecode: generateShareCode(6) })}>Regenerate</Button>
-                      <div className="bg-white p-2 rounded border"><QRCode value={window.location.origin + '/scoring?code=' + form.sharecode} size={64} /></div>
-                    </div>
-                  </div>
-                </div>
-                <DFooter>
-                  <DialogClose asChild>
-                    <Button variant="outline">Cancel</Button>
-                  </DialogClose>
-                  <Button onClick={onSubmit}>Create</Button>
-                </DFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

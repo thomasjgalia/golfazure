@@ -9,6 +9,7 @@ import EventDetailsPage from './pages/EventDetailsPage'
 import PlayersPage from './pages/PlayersPage'
 import TeamsPage from './pages/TeamsPage'
 import ScoringPage from './pages/ScoringPage'
+import ScorecardPage from './pages/ScorecardPage'
 import LeaderboardPage from './pages/LeaderboardPage'
 import PublicScoringPage from './pages/PublicScoringPage'
 import ProtectedRoute from './lib/ProtectedRoute'
@@ -32,6 +33,7 @@ const router = createBrowserRouter([
       },
       { path: 'leaderboard', element: <LeaderboardPage /> },
       { path: 'events/:id/scoring', element: <ScoringPage /> },
+      { path: 'events/:id/scorecard', element: <ScorecardPage /> },
       { path: 'scoring', element: <PublicScoringPage /> },
       { path: 'claim', element: <ClaimProfilePage /> },
     ],

@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useEvent } from '@/hooks/useEvents'
 import { useTeams } from '@/hooks/useTeams'
 import { usePlayers } from '@/hooks/usePlayers'
 import { useScores } from '@/hooks/useScores'
 import { useAuth } from '@/lib/auth'
+import { useBottomBar } from '@/lib/bottomBar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { colorForScore } from '@/utils/format'
@@ -250,15 +251,47 @@ export default function ScoringPage() {
     (scores ?? []).some((s) => s.playerid === p.playerid && s.holenumber === currentHole && s.strokes != null)
   ).length
 
+  const individualBottomBar = useMemo(() => {
+    if (!team || !isIndividual) return null
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="ghost" disabled={holes === 0} onClick={() => setCurrentHole(Math.max(1, currentHole - 1))}>Prev</Button>
+        <Button variant="ghost" disabled={holes === 0} onClick={() => setCurrentHole(Math.min(holes || 1, currentHole + 1))}>Next</Button>
+      </div>
+    )
+  }, [team, isIndividual, holes, currentHole])
+
+  const teamBottomBar = useMemo(() => {
+    if (!team || isIndividual) return null
+    return (
+      <div className="grid grid-cols-4 gap-2">
+        <Button variant="ghost" disabled={holes === 0} onClick={() => handleSelectHole(Math.max(1, currentHole - 1))}>Prev</Button>
+        <Button variant="outline" onClick={() => { clear(); haptic() }} disabled={!!event?.islocked || !canEditScores}>Clear</Button>
+        <Button onClick={() => { save(); haptic() }} disabled={!!event?.islocked || !canEditScores}>Save</Button>
+        <Button variant="ghost" disabled={holes === 0} onClick={() => handleSelectHole(Math.min(holes || 1, currentHole + 1))}>Next</Button>
+      </div>
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [team, isIndividual, holes, currentHole, event, canEditScores, scores, strokes])
+
+  useBottomBar(isIndividual ? individualBottomBar : teamBottomBar)
+
   return (
-    <div className="space-y-4 pb-24">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Scoring</h1>
-        {event && (
-          <Button asChild variant="outline">
-            <Link to={`/leaderboard?eventId=${event.eventid}`}>Leaderboard</Link>
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {event && team && (
+            <Button asChild variant="outline">
+              <Link to={`/events/${event.eventid}/scorecard?teamId=${team.teamid}`}>Scorecard</Link>
+            </Button>
+          )}
+          {event && (
+            <Button asChild variant="outline">
+              <Link to={`/leaderboard?eventId=${event.eventid}`}>Leaderboard</Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">
@@ -277,7 +310,7 @@ export default function ScoringPage() {
 
       {team && isIndividual && (
         <>
-          <div className="border sticky top-20 z-20 bg-white rounded p-3 space-y-2">
+          <div className="border sticky top-0 z-20 bg-white rounded p-3 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-lg font-medium">Hole {currentHole} • Par {par[currentHole - 1] ?? 4}</div>
               <div className="text-sm text-muted-foreground">{enteredCount}/{teamPlayers.length} entered</div>
@@ -307,17 +340,13 @@ export default function ScoringPage() {
                 <div className="text-sm text-muted-foreground">This team has no players assigned yet.</div>
               )}
             </div>
-
-            <div className="fixed bottom-0 left-0 right-0 border-t bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/75">
-              <div className="container py-2 grid grid-cols-2 gap-2">
-                <Button variant="ghost" disabled={holes === 0} onClick={() => setCurrentHole(Math.max(1, currentHole - 1))}>Prev</Button>
-                <Button variant="ghost" disabled={holes === 0} onClick={() => setCurrentHole(Math.min(holes || 1, currentHole + 1))}>Next</Button>
-              </div>
-            </div>
           </div>
 
           <div>
-            <div className="text-sm font-medium mb-1">Scorecard</div>
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-sm font-medium">Scorecard</div>
+              <Link to={`/events/${eventId}/scorecard?teamId=${team.teamid}`} className="text-xs text-primary">Open full view</Link>
+            </div>
             <div className="overflow-x-auto border rounded">
               <table className="text-xs">
                 <thead>
@@ -374,7 +403,7 @@ export default function ScoringPage() {
 
       {team && !isIndividual && (
         <>
-          <div className="border sticky top-20 z-20 bg-white rounded p-3 space-y-2">
+          <div className="border sticky top-0 z-20 bg-white rounded p-3 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-lg font-medium">Hole {currentHole} • Par {par[currentHole - 1] ?? 4}</div>
               <div className="text-sm">
@@ -405,15 +434,6 @@ export default function ScoringPage() {
                 disabled={!canEditScores}
               />
               <Button size="sm" variant="outline" onClick={() => handleQuickSave((strokes ?? (par[currentHole - 1] ?? 4)) + 1)} disabled={!canEditScores}>+</Button>
-            </div>
-
-            <div className="fixed bottom-0 left-0 right-0 border-t bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/75">
-              <div className="container py-2 grid grid-cols-4 gap-2">
-                <Button variant="ghost" disabled={holes === 0} onClick={() => handleSelectHole(Math.max(1, currentHole - 1))}>Prev</Button>
-                <Button variant="outline" onClick={() => { clear(); haptic() }} disabled={!!event?.islocked || !canEditScores}>Clear</Button>
-                <Button onClick={() => { save(); haptic() }} disabled={!!event?.islocked || !canEditScores}>Save</Button>
-                <Button variant="ghost" disabled={holes === 0} onClick={() => handleSelectHole(Math.min(holes || 1, currentHole + 1))}>Next</Button>
-              </div>
             </div>
           </div>
 

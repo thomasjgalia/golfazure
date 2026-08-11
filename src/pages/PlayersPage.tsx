@@ -1,11 +1,12 @@
-﻿import { usePlayers } from '@/hooks/usePlayers'
+import { usePlayers } from '@/hooks/usePlayers'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogClose } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { NewPlayer, PlayerRow } from '@/types'
 import { useAuth } from '@/lib/auth'
+import { useBottomBar } from '@/lib/bottomBar'
 
 export default function PlayersPage() {
   const { players, loading, create, update, remove } = usePlayers()
@@ -70,50 +71,60 @@ export default function PlayersPage() {
     }
   }
 
-  return (
-    <div className="space-y-4 pb-24">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Players</h1>
-        {/* Moved Add button to sticky bottom bar */}
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>New Player</DialogTitle>
-              <DialogDescription>Enter player details</DialogDescription>
-            </DialogHeader>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>First name *</Label>
-                <Input required value={form.firstname} onChange={(e) => setForm({ ...form, firstname: e.target.value })} />
-              </div>
-              <div>
-                <Label>Last name *</Label>
-                <Input required value={form.lastname} onChange={(e) => setForm({ ...form, lastname: e.target.value })} />
-              </div>
-              <div>
-                <Label>Email *</Label>
-                <Input required type="email" value={form.email ?? ''} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              </div>
+  const bottomBarNode = useMemo(() => {
+    if (!isAdmin) return null
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <div className="grid grid-cols-1">
+          <DialogTrigger asChild>
+            <Button>Add Player</Button>
+          </DialogTrigger>
+        </div>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Player</DialogTitle>
+            <DialogDescription>Enter player details</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>First name *</Label>
+              <Input required value={form.firstname} onChange={(e) => setForm({ ...form, firstname: e.target.value })} />
+            </div>
+            <div>
+              <Label>Last name *</Label>
+              <Input required value={form.lastname} onChange={(e) => setForm({ ...form, lastname: e.target.value })} />
+            </div>
+            <div>
+              <Label>Email *</Label>
+              <Input required type="email" value={form.email ?? ''} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            </div>
+            <div>
+              <Label>Handicap</Label>
+              <Input type="number" step="0.1" value={form.handicap ?? ''} onChange={(e) => setForm({ ...form, handicap: e.target.value ? Number(e.target.value) : null })} />
+            </div>
+            <div className="col-span-2">
+              <Label>Profile Secret</Label>
+              <Input type="text" placeholder="e.g., 1234 or golf" value={form.profile_secret ?? ''} onChange={(e) => setForm({ ...form, profile_secret: e.target.value })} />
+              <p className="text-xs text-muted-foreground mt-1">Used for claiming profile in the app</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button onClick={submit}>Save</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, open, form])
 
-              <div>
-                <Label>Handicap</Label>
-                <Input type="number" step="0.1" value={form.handicap ?? ''} onChange={(e) => setForm({ ...form, handicap: e.target.value ? Number(e.target.value) : null })} />
-              </div>
-              <div className="col-span-2">
-                <Label>Profile Secret</Label>
-                <Input type="text" placeholder="e.g., 1234 or golf" value={form.profile_secret ?? ''} onChange={(e) => setForm({ ...form, profile_secret: e.target.value })} />
-                <p className="text-xs text-muted-foreground mt-1">Used for claiming profile in the app</p>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button onClick={submit}>Save</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+  useBottomBar(bottomBarNode)
+
+  return (
+    <div className="space-y-4">
+      <h1 className="text-xl font-semibold">Players</h1>
 
       {loading && <div>Loading...</div>}
 
@@ -136,8 +147,7 @@ export default function PlayersPage() {
           </div>
         ))}
       </div>
-          {/* Sticky bottom action bar */}
-      {/* Edit Player Dialog */}
+
       <Dialog open={openEdit} onOpenChange={setOpenEdit}>
         <DialogContent>
           <DialogHeader>
@@ -176,61 +186,6 @@ export default function PlayersPage() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {isAdmin && (
-        <div className="fixed bottom-0 left-0 right-0 border-t bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/75">
-          <div className="container py-2">
-            <Dialog open={open} onOpenChange={setOpen}>
-              <div className="grid grid-cols-1">
-                <DialogTrigger asChild>
-                  <Button>Add Player</Button>
-                </DialogTrigger>
-              </div>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>New Player</DialogTitle>
-                <DialogDescription>Enter player details</DialogDescription>
-              </DialogHeader>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                                  <Label>First name *</Label>
-                <Input required value={form.firstname} onChange={(e) => setForm({ ...form, firstname: e.target.value })} />
-
-                </div>
-                <div>
-                                  <Label>Last name *</Label>
-                <Input required value={form.lastname} onChange={(e) => setForm({ ...form, lastname: e.target.value })} />
-
-                </div>
-                <div>
-                                  <Label>Email *</Label>
-                <Input required type="email" value={form.email ?? ''} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-
-                </div>
-                
-
-                <div>
-                  <Label>Handicap</Label>
-                  <Input type="number" step="0.1" value={form.handicap ?? ''} onChange={(e) => setForm({ ...form, handicap: e.target.value ? Number(e.target.value) : null })} />
-                </div>
-                <div className="col-span-2">
-                  <Label>Profile Secret</Label>
-                  <Input type="text" placeholder="e.g., 1234 or golf" value={form.profile_secret ?? ''} onChange={(e) => setForm({ ...form, profile_secret: e.target.value })} />
-                  <p className="text-xs text-muted-foreground mt-1">Used for claiming profile in the app</p>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <DialogClose asChild>
-                  <Button variant="outline">Cancel</Button>
-                </DialogClose>
-                <Button onClick={submit}>Save</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
-      )}
     </div>
   )
 }
-

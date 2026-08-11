@@ -217,9 +217,14 @@ export default function LeaderboardPage() {
                   <td className="p-2">{r.holesCompleted}/{event?.numberofholes}</td>
                   <td className="p-2">{r.totalStrokes}</td>
                   <td className="p-2">
-                    <Button size="sm" asChild>
-                      <Link to={`/events/${eventId}/scoring?teamId=${r.teamIdForScore}`}>Score</Link>
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button size="sm" asChild>
+                        <Link to={`/events/${eventId}/scoring?teamId=${r.teamIdForScore}`}>Score</Link>
+                      </Button>
+                      <Button size="sm" variant="outline" asChild>
+                        <Link to={`/events/${eventId}/scorecard?teamId=${r.teamIdForScore}`}>Card</Link>
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               )
@@ -243,6 +248,9 @@ export default function LeaderboardPage() {
                   <div className={`font-semibold ${colorForScore(shown)}`}>{shown > 0 ? `+${shown}` : shown}</div>
                   <Button size="sm" variant="default" asChild>
                     <Link to={`/events/${eventId}/scoring?teamId=${r.teamIdForScore}`}>Score</Link>
+                  </Button>
+                  <Button size="sm" variant="outline" asChild>
+                    <Link to={`/events/${eventId}/scorecard?teamId=${r.teamIdForScore}`}>Card</Link>
                   </Button>
                 </div>
               </div>
