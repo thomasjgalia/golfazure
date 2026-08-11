@@ -104,11 +104,23 @@ export default function ScorecardPage() {
             </thead>
             <tbody>
               {rows.map((r) => {
-                const playedCount = Object.keys(r.byHole).length
+                const playedHoles = Object.keys(r.byHole).map(Number)
+                const playedCount = playedHoles.length
                 const total = holeNumbers.reduce((a, h) => a + (r.byHole[h] ?? 0), 0)
+                const parPlayed = playedHoles.reduce((a, h) => a + (par[h - 1] ?? 4), 0)
+                const scoreToPar = playedCount > 0 ? total - parPlayed : null
                 return (
                   <tr key={r.key} className="border-t">
-                    <td className="p-2 font-medium truncate sticky left-0 bg-white whitespace-nowrap">{r.label}</td>
+                    <td className="p-2 font-medium sticky left-0 bg-white whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate">{r.label}</span>
+                        {scoreToPar != null && (
+                          <span className={`text-xs font-semibold ${colorForScore(scoreToPar)}`}>
+                            {scoreToPar === 0 ? 'E' : scoreToPar > 0 ? `+${scoreToPar}` : scoreToPar}
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     {holeNumbers.map((h) => {
                       const v = r.byHole[h]
                       const parVal = par[h - 1] ?? 4
