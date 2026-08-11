@@ -29,10 +29,13 @@ function PlayerScoreRow({
   onSave: (strokes: number) => void
   onClear: () => void
 }) {
-  const [strokes, setStrokes] = useState<number | null>(strokesValue)
-  useEffect(() => setStrokes(strokesValue), [strokesValue])
+  // Unsaved rows display (and adjust from) par by default - no score is
+  // persisted until the player actually taps +/-, types+confirms, or clears.
+  const [strokes, setStrokes] = useState<number>(strokesValue ?? par)
+  useEffect(() => setStrokes(strokesValue ?? par), [strokesValue, par])
 
-  const toPar = strokes != null ? strokes - par : null
+  const hasSaved = strokesValue != null
+  const toPar = strokes - par
   const disabled = locked || !canEdit
 
   function quickSave(v: number) {
@@ -42,39 +45,27 @@ function PlayerScoreRow({
   }
 
   return (
-    <div className="border rounded p-2 space-y-1">
+    <div className="border rounded px-2 py-1.5 space-y-1">
       <div className="flex items-center justify-between gap-2">
         <div className="text-sm font-medium truncate">{player.firstname} {player.lastname}</div>
-        {toPar != null && (
-          <div className={`text-xs font-semibold ${colorForScore(toPar)}`}>
-            {strokes} ({toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : toPar})
-          </div>
-        )}
-      </div>
-      <div className="flex flex-wrap gap-1">
-        {[-2, -1, 0, 1, 2].map((d) => {
-          const v = par + d
-          return (
-            <Button key={d} size="sm" className="px-2" variant={strokes === v ? 'default' : 'secondary'} disabled={disabled} onClick={() => quickSave(v)}>
-              {d === 0 ? 'Par' : d > 0 ? `+${d}` : d}
-            </Button>
-          )
-        })}
+        <div className={`text-xs font-semibold ${colorForScore(toPar)}`}>
+          {strokes} ({toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : toPar})
+        </div>
       </div>
       <div className="flex items-center gap-1">
-        <Button size="sm" variant="outline" disabled={disabled} onClick={() => quickSave((strokes ?? par) - 1)}>-</Button>
+        <Button size="sm" variant="outline" className="h-7 w-7 px-0" disabled={disabled} onClick={() => quickSave(strokes - 1)}>-</Button>
         <Input
           type="number"
-          className="w-14 h-8 text-center"
-          value={strokes ?? ''}
+          className="w-12 h-7 text-center px-1"
+          value={strokes}
           disabled={disabled}
-          onChange={(e) => setStrokes(e.target.value ? Number(e.target.value) : null)}
-          onBlur={() => { if (strokes != null) onSave(strokes) }}
-          onKeyDown={(e) => { if (e.key === 'Enter' && strokes != null) onSave(strokes) }}
+          onChange={(e) => setStrokes(e.target.value ? Number(e.target.value) : par)}
+          onBlur={() => onSave(strokes)}
+          onKeyDown={(e) => { if (e.key === 'Enter') onSave(strokes) }}
         />
-        <Button size="sm" variant="outline" disabled={disabled} onClick={() => quickSave((strokes ?? par) + 1)}>+</Button>
-        {strokes != null && !disabled && (
-          <Button size="sm" variant="ghost" className="ml-auto text-xs text-danger" onClick={() => { setStrokes(null); onClear() }}>Clear</Button>
+        <Button size="sm" variant="outline" className="h-7 w-7 px-0" disabled={disabled} onClick={() => quickSave(strokes + 1)}>+</Button>
+        {hasSaved && !disabled && (
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-danger ml-auto" onClick={() => { setStrokes(par); onClear() }}>Clear</Button>
         )}
       </div>
     </div>
@@ -310,8 +301,8 @@ export default function ScoringPage() {
 
       {team && isIndividual && (
         <>
-          <div className="border sticky top-0 z-20 bg-white rounded p-3 space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="border sticky top-0 z-20 bg-white rounded p-2 space-y-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-1">
               <div className="text-lg font-medium">Hole {currentHole} • Par {par[currentHole - 1] ?? 4}</div>
               <div className="text-sm text-muted-foreground">{enteredCount}/{teamPlayers.length} entered</div>
             </div>
@@ -320,7 +311,7 @@ export default function ScoringPage() {
                 {isAdmin ? 'Select a team to edit scores' : 'You can only edit scores for players on your team'}
               </div>
             )}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {teamPlayers.map((p) => {
                 const s = scores?.find((s) => s.playerid === p.playerid && s.holenumber === currentHole)
                 return (
