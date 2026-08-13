@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { colorForScore } from '@/utils/format'
 import type { PlayerRow } from '@/types'
 import { toast } from 'sonner'
+import { Check } from 'lucide-react'
 
 function haptic(ms = 20) {
   try { navigator.vibrate?.(ms) } catch {}
@@ -64,6 +65,9 @@ function PlayerScoreRow({
           onKeyDown={(e) => { if (e.key === 'Enter') onSave(strokes) }}
         />
         <Button size="sm" variant="outline" className="h-7 w-7 px-0" disabled={disabled} onClick={() => quickSave(strokes + 1)}>+</Button>
+        <Button size="sm" variant="default" className="h-7 w-7 px-0" disabled={disabled} onClick={() => quickSave(strokes)} title="Confirm this score">
+          <Check className="h-3.5 w-3.5" />
+        </Button>
         {hasSaved && !disabled && (
           <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-danger ml-auto" onClick={() => { setStrokes(par); onClear() }}>Clear</Button>
         )}
