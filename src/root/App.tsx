@@ -2,7 +2,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useState, ReactNode } from 'react'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
-import { User, UserX } from 'lucide-react'
+import { User } from 'lucide-react'
 import { BottomBarContext } from '@/lib/bottomBar'
 
 // App shell: header and bottom bar are real flex siblings of the scrollable
@@ -32,8 +32,8 @@ export default function App() {
                   <User className="h-3 w-3" />
                   {claimedPlayer?.firstname} {claimedPlayer?.lastname}
                 </div>
-                <Button variant="outline" size="sm" onClick={releaseProfile}>
-                  <UserX className="h-4 w-4 md:mr-2" />
+                <Button variant="success" size="sm" onClick={releaseProfile}>
+                  <User className="h-4 w-4 md:mr-2" />
                   <span className="hidden md:inline">Release</span>
                 </Button>
               </>
