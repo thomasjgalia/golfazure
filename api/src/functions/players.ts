@@ -1,7 +1,8 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { getPool } from '../db'
 import { requireAdmin } from '../lib/authz'
 import { PlayerRecord, listPlayers, getPlayer, getPlayersByIds, createPlayer, updatePlayer, deletePlayer } from '../lib/playersTable'
+import { listAllTeams } from '../lib/teamsTable'
+import { anyScoreReferencesPlayer } from '../lib/scoresTable'
 
 // Never send profile_secret to the client - that only ever leaves the server
 // via /api/auth/claim, and only to the player who proved they know it.
@@ -10,20 +11,13 @@ function toPublic(p: PlayerRecord) {
   return publicPlayer
 }
 
-// teams/scores haven't migrated off SQL yet, so this is the one place players.ts
-// still needs a SQL connection - to preserve the same delete-protection that used
-// to come from a foreign key constraint, now enforced in application code.
+// Replaces the delete-protection that used to come from a SQL foreign key -
+// now that teams/scores have also moved to Table Storage, this is enforced
+// entirely in application code with no SQL connection needed anywhere.
 async function isPlayerReferenced(id: number): Promise<boolean> {
-  const pool = await getPool()
-  const scoreCheck = await pool.request().input('id', id).query('SELECT TOP 1 scoreid FROM scores WHERE playerid = @id')
-  if (scoreCheck.recordset.length > 0) return true
-
-  const teamCheck = await pool.request().query('SELECT players FROM teams')
-  for (const row of teamCheck.recordset) {
-    const players = typeof row.players === 'string' ? JSON.parse(row.players) : row.players ?? {}
-    if (Object.values(players).includes(id)) return true
-  }
-  return false
+  if (await anyScoreReferencesPlayer(id)) return true
+  const teams = await listAllTeams()
+  return teams.some((t) => Object.values(t.players).includes(id))
 }
 
 // GET /api/players

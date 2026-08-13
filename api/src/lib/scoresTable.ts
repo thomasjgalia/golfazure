@@ -119,3 +119,14 @@ export async function deleteScoresForEvent(eventid: number): Promise<void> {
     await client.deleteEntity(entity.partitionKey as string, entity.rowKey as string)
   }
 }
+
+// Full-table scan across all events - only used for the "does this player
+// have any recorded scores" delete-protection check, which is rare/admin-
+// driven and fine to be O(all scores) at this data volume.
+export async function anyScoreReferencesPlayer(playerid: number): Promise<boolean> {
+  const client = await getClient()
+  for await (const entity of client.listEntities()) {
+    if (entity.playerid === playerid) return true
+  }
+  return false
+}
