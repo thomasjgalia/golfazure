@@ -1,6 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { getPool } from '../db'
 import { requireAdmin } from '../lib/authz'
+import { listEvents, getEvent, getEventBySharecode, createEvent, updateEvent, deleteEvent } from '../lib/eventsTable'
 
 // Fields an event row may be created/updated with.
 const WRITABLE_FIELDS = [
@@ -15,9 +15,8 @@ app.http('events-list', {
   route: 'events',
   handler: async (_req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const pool = await getPool()
-      const result = await pool.request().query('SELECT * FROM events ORDER BY CAST(eventdate AS NVARCHAR(MAX)) DESC')
-      return { jsonBody: result.recordset }
+      const events = await listEvents()
+      return { jsonBody: events }
     } catch (err: any) {
       return { status: 500, jsonBody: { message: err.message } }
     }
@@ -32,12 +31,9 @@ app.http('events-by-sharecode', {
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
     try {
       const code = (req.params.code || '').toUpperCase()
-      const pool = await getPool()
-      const result = await pool.request()
-        .input('code', code)
-        .query('SELECT * FROM events WHERE UPPER(CAST(sharecode AS NVARCHAR(MAX))) = @code')
-      if (!result.recordset[0]) return { status: 404, jsonBody: { message: 'Event not found' } }
-      return { jsonBody: result.recordset[0] }
+      const event = await getEventBySharecode(code)
+      if (!event) return { status: 404, jsonBody: { message: 'Event not found' } }
+      return { jsonBody: event }
     } catch (err: any) {
       return { status: 500, jsonBody: { message: err.message } }
     }
@@ -51,12 +47,9 @@ app.http('events-get', {
   route: 'events/{id:int}',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const pool = await getPool()
-      const result = await pool.request()
-        .input('id', Number(req.params.id))
-        .query('SELECT * FROM events WHERE eventid = @id')
-      if (!result.recordset[0]) return { status: 404, jsonBody: { message: 'Event not found' } }
-      return { jsonBody: result.recordset[0] }
+      const event = await getEvent(Number(req.params.id))
+      if (!event) return { status: 404, jsonBody: { message: 'Event not found' } }
+      return { jsonBody: event }
     } catch (err: any) {
       return { status: 500, jsonBody: { message: err.message } }
     }
@@ -72,24 +65,20 @@ app.http('events-create', {
     const auth = requireAdmin(req)
     if (auth.error) return auth.error
     try {
-      const pool = await getPool()
       const b = (await req.json()) as any
-      const parperhole = typeof b.parperhole === 'string' ? b.parperhole : JSON.stringify(b.parperhole)
-      const result = await pool.request()
-        .input('eventname', b.eventname)
-        .input('eventdate', b.eventdate)
-        .input('coursename', b.coursename)
-        .input('tees', b.tees ?? null)
-        .input('format', b.format ?? null)
-        .input('numberofholes', b.numberofholes)
-        .input('parperhole', parperhole)
-        .input('islocked', b.islocked ?? false)
-        .input('sharecode', b.sharecode)
-        .input('status', b.status ?? 'Upcoming')
-        .query(`INSERT INTO events (eventname, eventdate, coursename, tees, format, numberofholes, parperhole, islocked, sharecode, status)
-                OUTPUT INSERTED.*
-                VALUES (@eventname, @eventdate, @coursename, @tees, @format, @numberofholes, @parperhole, @islocked, @sharecode, @status)`)
-      return { jsonBody: result.recordset[0] }
+      const event = await createEvent({
+        eventname: b.eventname,
+        eventdate: b.eventdate,
+        coursename: b.coursename,
+        tees: b.tees ?? null,
+        format: b.format ?? null,
+        numberofholes: b.numberofholes,
+        parperhole: Array.isArray(b.parperhole) ? b.parperhole : JSON.parse(b.parperhole ?? '[]'),
+        islocked: b.islocked ?? false,
+        sharecode: b.sharecode,
+        status: b.status ?? 'Upcoming',
+      })
+      return { jsonBody: event }
     } catch (err: any) {
       return { status: 500, jsonBody: { message: err.message } }
     }
@@ -105,26 +94,17 @@ app.http('events-update', {
     const auth = requireAdmin(req)
     if (auth.error) return auth.error
     try {
-      const pool = await getPool()
       const b = (await req.json()) as any
-      const sets: string[] = []
-      const request = pool.request().input('id', Number(req.params.id))
-
-      let i = 0
+      const patch: Record<string, any> = {}
       for (const key of WRITABLE_FIELDS) {
         if (!(key in b)) continue
-        const param = `p${i++}`
-        let val = b[key]
-        if (key === 'parperhole') val = typeof val === 'string' ? val : JSON.stringify(val)
-        sets.push(`${key} = @${param}`)
-        request.input(param, val)
+        patch[key] = key === 'parperhole' && typeof b[key] === 'string' ? JSON.parse(b[key]) : b[key]
       }
+      if (Object.keys(patch).length === 0) return { status: 400, jsonBody: { message: 'No fields to update' } }
 
-      if (sets.length === 0) return { status: 400, jsonBody: { message: 'No fields to update' } }
-
-      const result = await request.query(`UPDATE events SET ${sets.join(', ')} OUTPUT INSERTED.* WHERE eventid = @id`)
-      if (!result.recordset[0]) return { status: 404, jsonBody: { message: 'Event not found' } }
-      return { jsonBody: result.recordset[0] }
+      const event = await updateEvent(Number(req.params.id), patch)
+      if (!event) return { status: 404, jsonBody: { message: 'Event not found' } }
+      return { jsonBody: event }
     } catch (err: any) {
       return { status: 500, jsonBody: { message: err.message } }
     }
@@ -140,10 +120,10 @@ app.http('events-delete', {
     const auth = requireAdmin(req)
     if (auth.error) return auth.error
     try {
-      const pool = await getPool()
-      await pool.request()
-        .input('id', Number(req.params.id))
-        .query('DELETE FROM events WHERE eventid = @id')
+      const id = Number(req.params.id)
+      // TODO(cascade): once teams/scores also move to Table Storage, also
+      // clean up this event's partition in those tables here.
+      await deleteEvent(id)
       return { jsonBody: { success: true } }
     } catch (err: any) {
       return { status: 500, jsonBody: { message: err.message } }
