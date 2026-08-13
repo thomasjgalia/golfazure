@@ -1,6 +1,8 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { requireAdmin } from '../lib/authz'
 import { listEvents, getEvent, getEventBySharecode, createEvent, updateEvent, deleteEvent } from '../lib/eventsTable'
+import { deleteTeamsForEvent } from '../lib/teamsTable'
+import { deleteScoresForEvent } from '../lib/scoresTable'
 
 // Fields an event row may be created/updated with.
 const WRITABLE_FIELDS = [
@@ -121,8 +123,10 @@ app.http('events-delete', {
     if (auth.error) return auth.error
     try {
       const id = Number(req.params.id)
-      // TODO(cascade): once teams/scores also move to Table Storage, also
-      // clean up this event's partition in those tables here.
+      // Teams and scores live in their own tables now - clean those up too
+      // rather than leaving them behind as orphaned, unreachable data.
+      await deleteTeamsForEvent(id)
+      await deleteScoresForEvent(id)
       await deleteEvent(id)
       return { jsonBody: { success: true } }
     } catch (err: any) {
