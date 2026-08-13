@@ -10,6 +10,10 @@ dist/
 .env.*.local
 api/local.settings.json
 
+# One-time migration exports - contain real player data (emails, phone
+# numbers, profile secrets in plaintext), never commit these
+migrate/
+
 # Logs
 logs/
 *.log

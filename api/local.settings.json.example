@@ -8,7 +8,8 @@
     "DB_USER": "your-db-user",
     "DB_PASSWORD": "your-db-password",
     "AUTH_SECRET": "generate a long random string, e.g. `node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\"`",
-    "GOLF_COURSE_API_KEY": "your golfcourseapi.com API key (optional - course lookup is skipped without it)"
+    "GOLF_COURSE_API_KEY": "your golfcourseapi.com API key (optional - course lookup is skipped without it)",
+    "AZURE_TABLES_CONNECTION_STRING": "connection string for the shared storage account (Players table) - Azure Portal > Storage account > Access keys"
   },
   "Host": {
     "CORS": "*"
