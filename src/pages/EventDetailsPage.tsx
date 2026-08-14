@@ -125,7 +125,7 @@ export default function EventDetailsPage() {
                 key={i}
                 type="number"
                 inputMode="numeric"
-                className="px-2 py-1 text-center"
+                className="px-2 py-1 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 disabled={!isAdmin}
                 value={p}
                 onChange={(e) => {

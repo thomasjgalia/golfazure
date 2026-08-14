@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useEvent } from '@/hooks/useEvents'
 import { useTeams } from '@/hooks/useTeams'
@@ -125,18 +125,29 @@ export default function ScoringPage() {
     }
   }, [eventId])
 
+  // Whenever a team is (re)selected - arriving fresh from the Leaderboard,
+  // Scorecard, or anywhere else - jump straight to the first hole that still
+  // needs a score, rather than always hole 1 or wherever was last viewed.
+  // Guarded by a ref so it only fires once per team selection, not on every
+  // score update while the user is actively scoring.
+  const autoNavTeamRef = useRef<number | undefined>(undefined)
   useEffect(() => {
-    if (!teamId || !eventId) return
-    try {
-      const h = localStorage.getItem(`scoring:lastHole:${eventId}:${teamId}`)
-      if (h) setCurrentHole(Math.max(1, Math.min(holes || 1, Number(h) || 1)))
-    } catch {}
-  }, [teamId, eventId, holes])
+    if (!teamId || !eventId || !scores || holes === 0) return
+    if (autoNavTeamRef.current === teamId) return
+    autoNavTeamRef.current = teamId
+    let nextHole = holes
+    for (const h of holeNumbers) {
+      const complete = isIndividual
+        ? teamPlayers.length > 0 && teamPlayers.every((p) =>
+            scores.some((s) => s.playerid === p.playerid && s.holenumber === h && s.strokes != null)
+          )
+        : scores.some((s) => s.teamid === teamId && s.playerid == null && s.holenumber === h && s.strokes != null)
+      if (!complete) { nextHole = h; break }
+    }
+    setCurrentHole(nextHole)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId, eventId, scores, holes, isIndividual, teamPlayers.length])
 
-  useEffect(() => {
-    if (!teamId || !eventId) return
-    try { localStorage.setItem(`scoring:lastHole:${eventId}:${teamId}`, String(currentHole)) } catch {}
-  }, [currentHole, teamId, eventId])
   const [strokes, setStrokes] = useState<number | null>(null)
 
   useEffect(() => {
