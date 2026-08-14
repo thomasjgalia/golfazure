@@ -3,7 +3,7 @@ import { useLocation, useSearchParams, Link } from 'react-router-dom'
 import { api } from '@/lib/api'
 import type { EventRow, ScoreRow, TeamRow, PlayerRow } from '@/types'
 import { initials } from '@/types'
-import { colorForScore, formatDate } from '@/utils/format'
+import { colorForScore, formatDate, stablefordPoints } from '@/utils/format'
 import { Button } from '@/components/ui/button'
 
 function normalizeEvent(raw: any): EventRow {
@@ -30,6 +30,8 @@ type Row = {
   totalStrokes: number
   backStrokes: number
   last3Strokes: number
+  totalPoints: number
+  backPoints: number
   holesCompleted: number
   teamIdForScore: number
 }
@@ -43,7 +45,9 @@ export default function LeaderboardPage() {
   const [scores, setScores] = useState<ScoreRow[]>([])
   const [players, setPlayers] = useState<Record<number, PlayerRow>>({})
   const [mode, setMode] = useState<'actual' | 'net'>((search.get('mode') as 'actual' | 'net') || 'actual')
-  const isIndividual = event?.format === 'Stroke Play'
+  // Stableford is scored per-player like Stroke Play, just ranked by points instead of strokes.
+  const isStableford = event?.format === 'Stableford'
+  const isIndividual = event?.format === 'Stroke Play' || isStableford
 
   // Build initials string in component scope so it can be used in render
   function teamMembersInitials(team: TeamRow) {
@@ -98,12 +102,15 @@ export default function LeaderboardPage() {
       const holesPlayed = new Set(Object.keys(byHole).map(Number))
       const sumStrokes = (idx: number[]) => idx.reduce((a, h) => a + (holesPlayed.has(h) ? (byHole[h] ?? 0) : 0), 0)
       const sumPar = (idx: number[]) => idx.reduce((a, h) => a + (holesPlayed.has(h) ? (par[h - 1] ?? 4) : 0), 0)
+      const sumPoints = (idx: number[]) => idx.reduce((a, h) => a + (holesPlayed.has(h) ? stablefordPoints(byHole[h] ?? 0, par[h - 1] ?? 4) : 0), 0)
       const totalStrokes = sumStrokes(frontIdx) + sumStrokes(backIdx)
       const totalPar = sumPar(frontIdx) + sumPar(backIdx)
       const scoreToPar = totalPar > 0 ? totalStrokes - totalPar : 0
       const backStrokes = sumStrokes(backIdx)
       const last3Strokes = last3Idx.reduce((a, h) => a + (byHole[h] ?? 0), 0)
-      return { totalStrokes, scoreToPar, backStrokes, last3Strokes, holesCompleted: holesPlayed.size }
+      const totalPoints = sumPoints(frontIdx) + sumPoints(backIdx)
+      const backPoints = sumPoints(backIdx)
+      return { totalStrokes, scoreToPar, backStrokes, last3Strokes, totalPoints, backPoints, holesCompleted: holesPlayed.size }
     }
 
     function teamHandicapFor(team: TeamRow) {
@@ -162,6 +169,12 @@ export default function LeaderboardPage() {
     }
 
     return built.sort((a, b) => {
+      if (isStableford) {
+        // Stableford: most points wins, so every comparison is inverted vs. stroke play.
+        if (a.totalPoints !== b.totalPoints) return b.totalPoints - a.totalPoints
+        if (a.backPoints !== b.backPoints) return b.backPoints - a.backPoints
+        return a.name.localeCompare(b.name)
+      }
       const as = mode === 'net' ? a.netToPar : a.scoreToPar
       const bs = mode === 'net' ? b.netToPar : b.scoreToPar
       if (as !== bs) return as - bs
@@ -174,7 +187,7 @@ export default function LeaderboardPage() {
       return a.name.localeCompare(b.name)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teams, scores, event, players, mode, isIndividual])
+  }, [teams, scores, event, players, mode, isIndividual, isStableford])
 
   const nameHeader = isIndividual ? 'Player' : 'Team'
   const subtextHeader = isIndividual ? 'Team' : 'Players'
@@ -187,17 +200,19 @@ export default function LeaderboardPage() {
       </div>
 
       <div className="hidden md:block">
-        <div className="flex justify-end mb-2 gap-2">
-          <Button variant={mode === 'actual' ? 'default' : 'outline'} onClick={() => (window.history.replaceState(null, '', `?eventId=${eventId}&mode=actual`), setMode('actual'))}>Actual</Button>
-          <Button variant={mode === 'net' ? 'default' : 'outline'} onClick={() => (window.history.replaceState(null, '', `?eventId=${eventId}&mode=net`), setMode('net'))}>Net</Button>
-        </div>
+        {!isStableford && (
+          <div className="flex justify-end mb-2 gap-2">
+            <Button variant={mode === 'actual' ? 'default' : 'outline'} onClick={() => (window.history.replaceState(null, '', `?eventId=${eventId}&mode=actual`), setMode('actual'))}>Actual</Button>
+            <Button variant={mode === 'net' ? 'default' : 'outline'} onClick={() => (window.history.replaceState(null, '', `?eventId=${eventId}&mode=net`), setMode('net'))}>Net</Button>
+          </div>
+        )}
         <table className="w-full text-sm">
           <thead className="text-left text-muted-foreground">
             <tr>
               <th className="p-2">Rank</th>
               <th className="p-2">{nameHeader}</th>
               <th className="p-2">{subtextHeader}</th>
-              <th className="p-2">Score</th>
+              <th className="p-2">{isStableford ? 'Points' : 'Score'}</th>
               <th className="p-2">HCP</th>
               <th className="p-2">Holes</th>
               <th className="p-2">Strokes</th>
@@ -212,7 +227,11 @@ export default function LeaderboardPage() {
                   <td className="p-2">{i + 1}</td>
                   <td className="p-2">{r.name}</td>
                   <td className="p-2">{r.subtext}</td>
-                  <td className={`p-2 font-semibold ${colorForScore(shown)}`}>{shown > 0 ? `+${shown}` : shown}</td>
+                  {isStableford ? (
+                    <td className="p-2 font-semibold">{r.totalPoints}</td>
+                  ) : (
+                    <td className={`p-2 font-semibold ${colorForScore(shown)}`}>{shown > 0 ? `+${shown}` : shown}</td>
+                  )}
                   <td className="p-2">{r.hcp?.toFixed?.(1) ?? r.hcp}</td>
                   <td className="p-2">{r.holesCompleted}/{event?.numberofholes}</td>
                   <td className="p-2">{r.totalStrokes}</td>
@@ -234,10 +253,12 @@ export default function LeaderboardPage() {
       </div>
 
       <div className="grid gap-2 md:hidden">
-        <div className="flex justify-end mb-2 gap-2">
-          <Button size="sm" variant={mode === 'actual' ? 'default' : 'outline'} onClick={() => (window.history.replaceState(null, '', `?eventId=${eventId}&mode=actual`), setMode('actual'))}>Actual</Button>
-          <Button size="sm" variant={mode === 'net' ? 'default' : 'outline'} onClick={() => (window.history.replaceState(null, '', `?eventId=${eventId}&mode=net`), setMode('net'))}>Net</Button>
-        </div>
+        {!isStableford && (
+          <div className="flex justify-end mb-2 gap-2">
+            <Button size="sm" variant={mode === 'actual' ? 'default' : 'outline'} onClick={() => (window.history.replaceState(null, '', `?eventId=${eventId}&mode=actual`), setMode('actual'))}>Actual</Button>
+            <Button size="sm" variant={mode === 'net' ? 'default' : 'outline'} onClick={() => (window.history.replaceState(null, '', `?eventId=${eventId}&mode=net`), setMode('net'))}>Net</Button>
+          </div>
+        )}
         {rows.map((r, i) => {
           const shown = mode === 'net' ? r.netToPar : r.scoreToPar
           return (
@@ -245,7 +266,11 @@ export default function LeaderboardPage() {
               <div className="flex justify-between items-center gap-2">
                 <div className="font-medium">#{i + 1} {r.name}</div>
                 <div className="flex items-center gap-2">
-                  <div className={`font-semibold ${colorForScore(shown)}`}>{shown > 0 ? `+${shown}` : shown}</div>
+                  {isStableford ? (
+                    <div className="font-semibold">{r.totalPoints} pts</div>
+                  ) : (
+                    <div className={`font-semibold ${colorForScore(shown)}`}>{shown > 0 ? `+${shown}` : shown}</div>
+                  )}
                   <Button size="sm" variant="default" asChild>
                     <Link to={`/events/${eventId}/scoring?teamId=${r.teamIdForScore}`}>Score</Link>
                   </Button>

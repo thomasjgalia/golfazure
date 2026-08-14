@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth'
 import { useBottomBar } from '@/lib/bottomBar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { colorForScore } from '@/utils/format'
+import { colorForScore, stablefordPoints } from '@/utils/format'
 import type { PlayerRow } from '@/types'
 import { toast } from 'sonner'
 import { Check } from 'lucide-react'
@@ -26,7 +26,7 @@ function haptic(ms = 20) {
 // navigates to the next hole - entering a foursome's scores no longer fires
 // four separate saves (and four toasts) as you go.
 function PlayerScoreRow({
-  player, par, savedValue, pendingValue, canEdit, locked, onChange, onClear,
+  player, par, savedValue, pendingValue, canEdit, locked, onChange, onClear, showPoints,
 }: {
   player: PlayerRow
   par: number
@@ -36,6 +36,7 @@ function PlayerScoreRow({
   locked: boolean
   onChange: (strokes: number) => void
   onClear: () => void
+  showPoints?: boolean
 }) {
   const displayValue = pendingValue ?? savedValue ?? par
   const registered = pendingValue !== undefined
@@ -53,6 +54,7 @@ function PlayerScoreRow({
         <div className="text-sm font-medium truncate">{player.firstname} {player.lastname}</div>
         <div className={`text-xs font-semibold ${colorForScore(toPar)}`}>
           {displayValue} ({toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : toPar})
+          {showPoints && ` · ${stablefordPoints(displayValue, par)} pts`}
         </div>
       </div>
       <div className="flex items-center gap-1">
@@ -86,7 +88,9 @@ export default function ScoringPage() {
   const [search, setSearch] = useSearchParams()
   const teamId = Number(search.get('teamId') || 0) || undefined
   const team = teams?.find((t) => t.teamid === teamId)
-  const isIndividual = event?.format === 'Stroke Play'
+  const isStableford = event?.format === 'Stableford'
+  // Stableford is scored per-player like Stroke Play, just ranked by points instead of strokes.
+  const isIndividual = event?.format === 'Stroke Play' || isStableford
 
   const { scores, upsertScore, clearScore, refresh } = useScores(eventId, teamId)
 
@@ -361,6 +365,7 @@ export default function ScoringPage() {
                     locked={!!event?.islocked}
                     onChange={(v) => registerPending(p.playerid, v)}
                     onClear={() => clearPlayerScore(p)}
+                    showPoints={isStableford}
                   />
                 )
               })}

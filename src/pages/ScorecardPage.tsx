@@ -4,7 +4,7 @@ import { useTeams } from '@/hooks/useTeams'
 import { usePlayers } from '@/hooks/usePlayers'
 import { useScores } from '@/hooks/useScores'
 import { Button } from '@/components/ui/button'
-import { colorForScore, formatDate } from '@/utils/format'
+import { colorForScore, formatDate, stablefordPoints } from '@/utils/format'
 import type { PlayerRow } from '@/types'
 
 // Standalone, full-page scorecard - broken out of ScoringPage since a table
@@ -20,7 +20,9 @@ export default function ScorecardPage() {
   const { teams } = useTeams(eventId)
   const { players } = usePlayers()
   const team = teams?.find((t) => t.teamid === teamId)
-  const isIndividual = event?.format === 'Stroke Play'
+  // Stableford is scored per-player like Stroke Play, just ranked by points instead of strokes.
+  const isIndividual = event?.format === 'Stroke Play' || event?.format === 'Stableford'
+  const isStableford = event?.format === 'Stableford'
 
   const { scores } = useScores(eventId, teamId)
 
@@ -93,6 +95,7 @@ export default function ScorecardPage() {
                   <th key={h} className="p-2 text-center w-10">{h}</th>
                 ))}
                 <th className="p-2 text-center font-semibold">Tot</th>
+                {isStableford && <th className="p-2 text-center font-semibold">Pts</th>}
               </tr>
               <tr className="text-muted-foreground">
                 <th className="p-2 text-left sticky left-0 bg-white whitespace-nowrap">Par</th>
@@ -100,6 +103,7 @@ export default function ScorecardPage() {
                   <th key={h} className="p-2 text-center font-normal">{par[h - 1] ?? 4}</th>
                 ))}
                 <th className="p-2 text-center">{totalPar}</th>
+                {isStableford && <th className="p-2 text-center" />}
               </tr>
             </thead>
             <tbody>
@@ -109,6 +113,7 @@ export default function ScorecardPage() {
                 const total = holeNumbers.reduce((a, h) => a + (r.byHole[h] ?? 0), 0)
                 const parPlayed = playedHoles.reduce((a, h) => a + (par[h - 1] ?? 4), 0)
                 const scoreToPar = playedCount > 0 ? total - parPlayed : null
+                const totalPoints = playedHoles.reduce((a, h) => a + stablefordPoints(r.byHole[h] ?? 0, par[h - 1] ?? 4), 0)
                 return (
                   <tr key={r.key} className="border-t">
                     <td className="p-2 font-medium sticky left-0 bg-white whitespace-nowrap">
@@ -132,6 +137,9 @@ export default function ScorecardPage() {
                       )
                     })}
                     <td className="p-2 text-center font-semibold">{playedCount > 0 ? total : '-'}</td>
+                    {isStableford && (
+                      <td className="p-2 text-center font-semibold">{playedCount > 0 ? totalPoints : '-'}</td>
+                    )}
                   </tr>
                 )
               })}

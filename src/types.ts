@@ -4,7 +4,7 @@
   eventdate: string // ISO date
   coursename: string
   tees: string | null
-  format: 'Scramble' | 'Best Ball' | 'Stroke Play' | 'Match Play' | null
+  format: 'Scramble' | 'Best Ball' | 'Stroke Play' | 'Match Play' | 'Stableford' | null
   numberofholes: number
   parperhole: number[] // length 9 or 18
   islocked: boolean

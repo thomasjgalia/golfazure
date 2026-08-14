@@ -101,7 +101,7 @@ export default function EventDetailsPage() {
           <Select disabled={!isAdmin} value={form.format ?? undefined} onValueChange={(v) => setForm({ ...form, format: v as EventRow['format'] })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              {['Scramble', 'Best Ball', 'Stroke Play', 'Match Play'].map((f) => (
+              {['Scramble', 'Best Ball', 'Stroke Play', 'Match Play', 'Stableford'].map((f) => (
                 <SelectItem key={f} value={f}>{f}</SelectItem>
               ))}
             </SelectContent>
