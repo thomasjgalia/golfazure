@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useEffect, useMemo, useState } from 'react'
+import { shuffle, computeTeamSizes, pickAnimalNames } from '@/utils/teamShuffle'
+import { toast } from 'sonner'
 
 export default function TeamsPage() {
   const params = useParams()
@@ -23,6 +25,11 @@ export default function TeamsPage() {
 
   const [openEdit, setOpenEdit] = useState(false)
   const [editingTeamId, setEditingTeamId] = useState<number | null>(null)
+
+  const [openShuffle, setOpenShuffle] = useState(false)
+  const [shuffleTeamSize, setShuffleTeamSize] = useState<3 | 4>(4)
+  const [shuffleSelected, setShuffleSelected] = useState<Set<number>>(new Set())
+  const [shuffling, setShuffling] = useState(false)
 
   const availablePlayers = useMemo(() => players ?? [], [players])
   const playerMap = useMemo(() => {
@@ -43,7 +50,63 @@ export default function TeamsPage() {
     return tid != null && tid !== forTeamId
   }
 
+  const unassignedPlayers = useMemo(
+    () => availablePlayers.filter((p) => assignedMap[p.playerid] == null),
+    [availablePlayers, assignedMap]
+  )
+
   useEffect(() => { refresh() }, [])
+
+  useEffect(() => {
+    if (openShuffle) setShuffleSelected(new Set(unassignedPlayers.map((p) => p.playerid)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openShuffle])
+
+  function toggleShufflePlayer(id: number) {
+    setShuffleSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const shuffleSizes = useMemo(
+    () => computeTeamSizes(shuffleSelected.size, shuffleTeamSize),
+    [shuffleSelected.size, shuffleTeamSize]
+  )
+
+  async function submitShuffle() {
+    const ids = shuffle(Array.from(shuffleSelected))
+    const sizes = computeTeamSizes(ids.length, shuffleTeamSize)
+    if (sizes.length === 0) return
+    const names = pickAnimalNames(sizes.length, (teams ?? []).map((t) => t.teamname))
+    setShuffling(true)
+    try {
+      let cursor = 0
+      // Sequential, not parallel: team ids are assigned by the API as
+      // "current max + 1", so creating several teams at once risks two
+      // requests computing the same id.
+      for (let i = 0; i < sizes.length; i++) {
+        const size = sizes[i]!
+        const group = ids.slice(cursor, cursor + size)
+        cursor += size
+        const playersJson = {
+          player1: group[0],
+          player2: group[1],
+          player3: group[2],
+          player4: group[3],
+        }
+        await create({ eventid: eventId, teamname: names[i]!, players: playersJson, startinghole: null })
+      }
+      toast.success(`Created ${sizes.length} team${sizes.length === 1 ? '' : 's'}`)
+      setOpenShuffle(false)
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to auto-assign teams')
+    } finally {
+      setShuffling(false)
+    }
+  }
 
   async function submit() {
     if (!Number.isFinite(eventId)) {
@@ -128,9 +191,69 @@ export default function TeamsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Teams</h1>
         {isAdmin && (
+        <div className="flex gap-2">
+        <Dialog open={openShuffle} onOpenChange={setOpenShuffle}>
+          <DialogTrigger asChild>
+            <Button variant="outline">Auto-Assign Teams</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Auto-Assign Teams</DialogTitle>
+              <DialogDescription>
+                Randomly splits the selected players into teams and names them for you. Great for scrambles.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4">
+              <div>
+                <Label>Team size</Label>
+                <Select value={String(shuffleTeamSize)} onValueChange={(v) => setShuffleTeamSize(Number(v) as 3 | 4)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="4">4 players</SelectItem>
+                    <SelectItem value="3">3 players</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Players to assign ({shuffleSelected.size})</Label>
+                {unassignedPlayers.length === 0 ? (
+                  <div className="text-sm text-muted-foreground mt-2">
+                    Every player is already on a team for this event.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 max-h-64 overflow-auto border rounded p-2 mt-2">
+                    {unassignedPlayers.map((p) => (
+                      <label key={p.playerid} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={shuffleSelected.has(p.playerid)}
+                          onChange={() => toggleShufflePlayer(p.playerid)}
+                        />
+                        <span>{p.lastname}, {p.firstname}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {shuffleSizes.length > 0 && (
+                <div className="text-sm text-muted-foreground">
+                  Will create {shuffleSizes.length} team{shuffleSizes.length === 1 ? '' : 's'}: {shuffleSizes.join(', ')} players each
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <DialogClose asChild>
+                  <Button variant="outline">Cancel</Button>
+                </DialogClose>
+                <Button onClick={submitShuffle} disabled={shuffling || shuffleSizes.length === 0}>
+                  {shuffling ? 'Assigning...' : 'Assign Teams'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>Create Team</Button>
@@ -171,6 +294,7 @@ export default function TeamsPage() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
         )}
       </div>
 
