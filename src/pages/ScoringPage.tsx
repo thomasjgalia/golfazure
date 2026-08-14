@@ -19,30 +19,32 @@ function haptic(ms = 20) {
 
 // One player's score entry for the current hole - used in Stroke Play events,
 // where each player on the team is scored individually rather than as a team.
+// Fully controlled: nothing here calls the server directly. Any interaction
+// (check, +/-, or a keystroke) just registers a pending value with the
+// parent, which turns the check green immediately and batches the actual
+// save for every player on this hole into one request when the player
+// navigates to the next hole - entering a foursome's scores no longer fires
+// four separate saves (and four toasts) as you go.
 function PlayerScoreRow({
-  player, par, strokesValue, canEdit, locked, onSave, onClear,
+  player, par, savedValue, pendingValue, canEdit, locked, onChange, onClear,
 }: {
   player: PlayerRow
   par: number
-  strokesValue: number | null
+  savedValue: number | null
+  pendingValue: number | undefined
   canEdit: boolean
   locked: boolean
-  onSave: (strokes: number) => void
+  onChange: (strokes: number) => void
   onClear: () => void
 }) {
-  // Unsaved rows display (and adjust from) par by default - no score is
-  // persisted until the player actually taps +/-, types+confirms, or clears.
-  const [strokes, setStrokes] = useState<number>(strokesValue ?? par)
-  useEffect(() => setStrokes(strokesValue ?? par), [strokesValue, par])
-
-  const hasSaved = strokesValue != null
-  const toPar = strokes - par
+  const displayValue = pendingValue ?? savedValue ?? par
+  const registered = pendingValue !== undefined
+  const toPar = displayValue - par
   const disabled = locked || !canEdit
 
-  function quickSave(v: number) {
-    setStrokes(v)
+  function bump(delta: number) {
     haptic()
-    onSave(v)
+    onChange(displayValue + delta)
   }
 
   return (
@@ -50,26 +52,24 @@ function PlayerScoreRow({
       <div className="flex items-center justify-between gap-2">
         <div className="text-sm font-medium truncate">{player.firstname} {player.lastname}</div>
         <div className={`text-xs font-semibold ${colorForScore(toPar)}`}>
-          {strokes} ({toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : toPar})
+          {displayValue} ({toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : toPar})
         </div>
       </div>
       <div className="flex items-center gap-1">
-        <Button size="sm" variant="outline" className="h-7 w-7 px-0" disabled={disabled} onClick={() => quickSave(strokes - 1)}>-</Button>
+        <Button size="sm" variant="outline" className="h-7 w-7 px-0" disabled={disabled} onClick={() => bump(-1)}>-</Button>
         <Input
           type="number"
           className="w-12 h-7 text-center px-1"
-          value={strokes}
+          value={displayValue}
           disabled={disabled}
-          onChange={(e) => setStrokes(e.target.value ? Number(e.target.value) : par)}
-          onBlur={() => onSave(strokes)}
-          onKeyDown={(e) => { if (e.key === 'Enter') onSave(strokes) }}
+          onChange={(e) => onChange(e.target.value ? Number(e.target.value) : par)}
         />
-        <Button size="sm" variant="outline" className="h-7 w-7 px-0" disabled={disabled} onClick={() => quickSave(strokes + 1)}>+</Button>
-        <Button size="sm" variant="default" className="h-7 w-7 px-0" disabled={disabled} onClick={() => quickSave(strokes)} title="Confirm this score">
+        <Button size="sm" variant="outline" className="h-7 w-7 px-0" disabled={disabled} onClick={() => bump(1)}>+</Button>
+        <Button size="sm" variant={registered ? 'success' : 'default'} className="h-7 w-7 px-0" disabled={disabled} onClick={() => { haptic(); onChange(displayValue) }} title="Confirm this score">
           <Check className="h-3.5 w-3.5" />
         </Button>
-        {hasSaved && !disabled && (
-          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-danger ml-auto" onClick={() => { setStrokes(par); onClear() }}>Clear</Button>
+        {savedValue != null && !disabled && (
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-danger ml-auto" onClick={onClear}>Clear</Button>
         )}
       </div>
     </div>
@@ -200,21 +200,51 @@ export default function ScoringPage() {
     }
   }
 
-  async function savePlayerScore(player: PlayerRow, v: number) {
-    if (!event || !team) return
-    if (event.islocked) return toast.error('Event is locked')
-    if (!canEditScores) return toast.error('You can only edit scores for players on your team')
+  // Individual mode: registering a value (check/+/-/keystroke) only updates
+  // local state - nothing hits the server until flushPendingScores runs, so
+  // filling out a whole foursome doesn't fire a save per tap.
+  const [pendingScores, setPendingScores] = useState<Record<number, number>>({})
+
+  useEffect(() => {
+    setPendingScores({})
+  }, [currentHole, teamId])
+
+  function registerPending(playerid: number, value: number) {
+    setPendingScores((prev) => ({ ...prev, [playerid]: value }))
+  }
+
+  async function flushPendingScores() {
+    const entries = Object.entries(pendingScores)
+    if (entries.length === 0) return
+    if (!event || !team) { setPendingScores({}); return }
+    if (event.islocked) { toast.error('Event is locked'); setPendingScores({}); return }
+    if (!canEditScores) { setPendingScores({}); return }
     try {
-      await upsertScore({ eventid: event.eventid, teamid: team.teamid, playerid: player.playerid, holenumber: currentHole, strokes: v })
+      await Promise.all(
+        entries.map(([playeridStr, v]) =>
+          upsertScore({ eventid: event.eventid, teamid: team.teamid, playerid: Number(playeridStr), holenumber: currentHole, strokes: v })
+        )
+      )
+      setPendingScores({})
       await refresh()
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to save score')
+      toast.error(e?.message || 'Failed to save scores')
     }
+  }
+
+  async function goToHoleIndividual(nextHole: number) {
+    await flushPendingScores()
+    setCurrentHole(nextHole)
   }
 
   async function clearPlayerScore(player: PlayerRow) {
     if (!event || !team) return
     if (!canEditScores) return toast.error('You can only edit scores for players on your team')
+    setPendingScores((prev) => {
+      const next = { ...prev }
+      delete next[player.playerid]
+      return next
+    })
     try {
       await clearScore(event.eventid, player.playerid, currentHole, 'player')
       await refresh()
@@ -243,6 +273,7 @@ export default function ScoringPage() {
   const totalToPar = totalPar > 0 ? totalStrokes - totalPar : 0
 
   const enteredCount = teamPlayers.filter((p) =>
+    pendingScores[p.playerid] !== undefined ||
     (scores ?? []).some((s) => s.playerid === p.playerid && s.holenumber === currentHole && s.strokes != null)
   ).length
 
@@ -250,11 +281,12 @@ export default function ScoringPage() {
     if (!team || !isIndividual) return null
     return (
       <div className="grid grid-cols-2 gap-2">
-        <Button variant="ghost" disabled={holes === 0} onClick={() => setCurrentHole(Math.max(1, currentHole - 1))}>Prev</Button>
-        <Button variant="ghost" disabled={holes === 0} onClick={() => setCurrentHole(Math.min(holes || 1, currentHole + 1))}>Next</Button>
+        <Button variant="ghost" disabled={holes === 0} onClick={() => goToHoleIndividual(Math.max(1, currentHole - 1))}>Prev</Button>
+        <Button variant="ghost" disabled={holes === 0} onClick={() => goToHoleIndividual(Math.min(holes || 1, currentHole + 1))}>Next</Button>
       </div>
     )
-  }, [team, isIndividual, holes, currentHole])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [team, isIndividual, holes, currentHole, pendingScores, event, canEditScores])
 
   const teamBottomBar = useMemo(() => {
     if (!team || isIndividual) return null
@@ -294,7 +326,7 @@ export default function ScoringPage() {
         <select
           className="border rounded px-2 py-1"
           value={teamId ?? ''}
-          onChange={(e) => { setSearch({ teamId: e.target.value }); try { localStorage.setItem(`scoring:lastTeam:${eventId}`, String(e.target.value)) } catch {} }}
+          onChange={async (e) => { await flushPendingScores(); setSearch({ teamId: e.target.value }); try { localStorage.setItem(`scoring:lastTeam:${eventId}`, String(e.target.value)) } catch {} }}
         >
           <option value="">Select team</option>
           {teams?.map((t) => (
@@ -323,10 +355,11 @@ export default function ScoringPage() {
                     key={p.playerid}
                     player={p}
                     par={par[currentHole - 1] ?? 4}
-                    strokesValue={s?.strokes ?? null}
+                    savedValue={s?.strokes ?? null}
+                    pendingValue={pendingScores[p.playerid]}
                     canEdit={!!canEditScores}
                     locked={!!event?.islocked}
-                    onSave={(v) => savePlayerScore(p, v)}
+                    onChange={(v) => registerPending(p.playerid, v)}
                     onClear={() => clearPlayerScore(p)}
                   />
                 )
@@ -379,7 +412,7 @@ export default function ScoringPage() {
                             <td
                               key={h}
                               className={`p-1.5 text-center cursor-pointer ${h === currentHole ? 'ring-2 ring-inset ring-primary' : ''} ${toPar == null ? '' : colorForScore(toPar)}`}
-                              onClick={() => setCurrentHole(h)}
+                              onClick={() => goToHoleIndividual(h)}
                             >
                               {v ?? '-'}
                             </td>
