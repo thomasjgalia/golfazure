@@ -64,7 +64,7 @@ export default function TeamsPage() {
 
   // House rule: Tom's team is always the Frogs.
   const frogsPlayerId = availablePlayers.find(
-    (p) => p.firstname.trim().toLowerCase() === 'tom' && p.lastname.trim().toLowerCase() === 'marturanto'
+    (p) => p.firstname.trim().toLowerCase() === 'tom' && p.lastname.trim().toLowerCase() === 'marturano'
   )?.playerid
 
   const unassignedPlayers = useMemo(
