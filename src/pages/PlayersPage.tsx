@@ -1,12 +1,14 @@
 import { usePlayers } from '@/hooks/usePlayers'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogClose } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useMemo, useState } from 'react'
 import type { NewPlayer, PlayerRow } from '@/types'
 import { useAuth } from '@/lib/auth'
 import { useBottomBar } from '@/lib/bottomBar'
+import { toast } from 'sonner'
 
 export default function PlayersPage() {
   const { players, loading, create, update, remove } = usePlayers()
@@ -17,11 +19,12 @@ export default function PlayersPage() {
   const [openEdit, setOpenEdit] = useState(false)
   const [editing, setEditing] = useState<PlayerRow | null>(null)
   const [editForm, setEditForm] = useState<NewPlayer & { profile_secret?: string }>({ firstname: '', lastname: '', phone: '', email: '', handicap: 18, profile_secret: '' })
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 
   async function submit() {
     const emailRe = /.+@.+\..+/i
     if (!form.firstname.trim() || !form.lastname.trim() || (form.email && !emailRe.test(form.email)) || form.handicap == null) {
-      alert('Please complete all required fields. Email, if provided, must be valid. Handicap defaults to 18 and is required.')
+      toast.error('Please complete all required fields. Email, if provided, must be valid. Handicap defaults to 18 and is required.')
       return
     }
     try {
@@ -29,7 +32,7 @@ export default function PlayersPage() {
       setOpen(false)
       setForm({ firstname: '', lastname: '', phone: '', email: '', handicap: 18, profile_secret: '' })
     } catch (e: any) {
-      alert(e.message || 'Failed to create player')
+      toast.error(e.message || 'Failed to create player')
     }
   }
 
@@ -50,7 +53,7 @@ export default function PlayersPage() {
     if (!editing) return
     const emailRe = /.+@.+\..+/i
     if (!editForm.firstname.trim() || !editForm.lastname.trim() || (editForm.email && !emailRe.test(editForm.email)) || editForm.handicap == null) {
-      alert('Please complete all required fields. Email, if provided, must be valid. Handicap is required.')
+      toast.error('Please complete all required fields. Email, if provided, must be valid. Handicap is required.')
       return
     }
     const patch: Partial<PlayerRow> = {
@@ -67,13 +70,12 @@ export default function PlayersPage() {
       setOpenEdit(false)
       setEditing(null)
     } catch (e: any) {
-      alert(e.message || 'Failed to update player')
+      toast.error(e.message || 'Failed to update player')
     }
   }
 
   async function deleteEditing() {
     if (!editing) return
-    if (!confirm('Delete this player?')) return
     try {
       await remove(editing.playerid)
       setOpenEdit(false)
@@ -185,7 +187,7 @@ export default function PlayersPage() {
             </div>
           </div>
           <div className="flex justify-between gap-2">
-            <Button variant="destructive" onClick={deleteEditing}>Delete</Button>
+            <Button variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>Delete</Button>
             <div className="flex gap-2">
               <DialogClose asChild>
                 <Button variant="outline">Cancel</Button>
@@ -195,6 +197,14 @@ export default function PlayersPage() {
           </div>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete player?"
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={deleteEditing}
+      />
     </div>
   )
 }

@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter as DFooter, DialogClose } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { formatDate } from '@/utils/format'
+import { Badge } from '@/components/ui/badge'
+import { formatDate, statusBadgeClass } from '@/utils/format'
 import { Link } from 'react-router-dom'
 import { generateShareCode } from '@/utils/shareCode'
 import QRCode from 'react-qr-code'
@@ -176,7 +177,7 @@ export default function EventsListPage() {
             <CardHeader className="p-4 pb-2">
               <CardTitle className="flex items-center justify-between text-base">
                 <span>{ev.eventname}</span>
-                <span className="text-xs font-normal text-muted-foreground">{ev.status}</span>
+                <Badge className={statusBadgeClass(ev.status)}>{ev.status}</Badge>
               </CardTitle>
               <CardDescription>{ev.coursename} • {formatDate(ev.eventdate)}</CardDescription>
             </CardHeader>

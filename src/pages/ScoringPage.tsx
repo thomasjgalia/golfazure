@@ -115,15 +115,28 @@ export default function ScoringPage() {
 
   const [currentHole, setCurrentHole] = useState<number>(1)
 
-  // restore last team and hole
+  // Default the team dropdown so a fresh arrival (e.g. tapping "Scoring" from
+  // the Events list) doesn't land on an empty "Select team" state: prefer the
+  // team the claimed player is actually on for this event, falling back to
+  // whichever team was last viewed (useful for an admin scoring several
+  // teams in turn).
   useEffect(() => {
-    if (!teamId && eventId) {
-      try {
-        const t = localStorage.getItem(`scoring:lastTeam:${eventId}`)
-        if (t) setSearch({ teamId: t })
-      } catch {}
+    if (teamId || !eventId || !teams) return
+    const myTeam = claimedPlayer && teams.find((t) =>
+      t.players.player1 === claimedPlayer.playerid ||
+      t.players.player2 === claimedPlayer.playerid ||
+      t.players.player3 === claimedPlayer.playerid ||
+      t.players.player4 === claimedPlayer.playerid
+    )
+    if (myTeam) {
+      setSearch({ teamId: String(myTeam.teamid) })
+      return
     }
-  }, [eventId])
+    try {
+      const t = localStorage.getItem(`scoring:lastTeam:${eventId}`)
+      if (t) setSearch({ teamId: t })
+    } catch {}
+  }, [eventId, teams, claimedPlayer])
 
   // Whenever a team is (re)selected - arriving fresh from the Leaderboard,
   // Scorecard, or anywhere else - jump straight to the first hole that still

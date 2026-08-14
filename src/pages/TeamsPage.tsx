@@ -1,4 +1,5 @@
 ﻿import { useParams } from 'react-router-dom'
+import { useEvent } from '@/hooks/useEvents'
 import { useTeams } from '@/hooks/useTeams'
 import { usePlayers } from '@/hooks/usePlayers'
 import { useAuth } from '@/lib/auth'
@@ -7,16 +8,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useEffect, useMemo, useState } from 'react'
 import { shuffle, computeTeamSizes, pickAnimalNames } from '@/utils/teamShuffle'
 import { toast } from 'sonner'
+import { api } from '@/lib/api'
+import type { ScoreRow, TeamRow } from '@/types'
 
 export default function TeamsPage() {
   const params = useParams()
   const eventId = Number(params.id)
+  const { event } = useEvent(eventId)
   const { teams, loading, create, update, remove, refresh } = useTeams(eventId)
   const { players } = usePlayers()
   const { isAdmin } = useAuth()
+  // Once an event is live (or done), team rosters are locked in - reshuffling
+  // would scramble who a hole's already-recorded scores belong to.
+  const eventIsLive = event?.status === 'In Progress' || event?.status === 'Completed'
 
   const [open, setOpen] = useState(false)
   const [teamname, setTeamname] = useState('')
@@ -29,7 +37,11 @@ export default function TeamsPage() {
   const [openShuffle, setOpenShuffle] = useState(false)
   const [shuffleTeamSize, setShuffleTeamSize] = useState<3 | 4>(4)
   const [shuffleSelected, setShuffleSelected] = useState<Set<number>>(new Set())
+  const [shuffleReshuffle, setShuffleReshuffle] = useState(false)
   const [shuffling, setShuffling] = useState(false)
+  const [scoreWarningOpen, setScoreWarningOpen] = useState(false)
+  const [pendingTeamsToDelete, setPendingTeamsToDelete] = useState<TeamRow[]>([])
+  const [deleteTeamTarget, setDeleteTeamTarget] = useState<TeamRow | null>(null)
 
   const availablePlayers = useMemo(() => players ?? [], [players])
   const playerMap = useMemo(() => {
@@ -58,9 +70,31 @@ export default function TeamsPage() {
   useEffect(() => { refresh() }, [])
 
   useEffect(() => {
-    if (openShuffle) setShuffleSelected(new Set(unassignedPlayers.map((p) => p.playerid)))
+    if (openShuffle) {
+      setShuffleSelected(new Set(unassignedPlayers.map((p) => p.playerid)))
+      setShuffleReshuffle(false)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openShuffle])
+
+  // Reshuffle mode widens the player pool to everyone (not just unassigned)
+  // and, by default, selects exactly the players who are already teamed up
+  // for this event - that's "reshuffle the outing", with room to fold in a
+  // late-arriving unassigned player if the admin checks them too.
+  const shufflePool = shuffleReshuffle ? availablePlayers : unassignedPlayers
+
+  function toggleReshuffleMode() {
+    if (eventIsLive) return
+    setShuffleReshuffle((prev) => {
+      const next = !prev
+      setShuffleSelected(
+        next
+          ? new Set(availablePlayers.filter((p) => assignedMap[p.playerid] != null).map((p) => p.playerid))
+          : new Set(unassignedPlayers.map((p) => p.playerid))
+      )
+      return next
+    })
+  }
 
   function toggleShufflePlayer(id: number) {
     setShuffleSelected((prev) => {
@@ -76,13 +110,20 @@ export default function TeamsPage() {
     [shuffleSelected.size, shuffleTeamSize]
   )
 
-  async function submitShuffle() {
+  async function performShuffle(teamsToDelete: TeamRow[]) {
     const ids = shuffle(Array.from(shuffleSelected))
     const sizes = computeTeamSizes(ids.length, shuffleTeamSize)
     if (sizes.length === 0) return
-    const names = pickAnimalNames(sizes.length, (teams ?? []).map((t) => t.teamname))
+
     setShuffling(true)
     try {
+      if (teamsToDelete.length > 0) {
+        await Promise.all(teamsToDelete.map((t) => remove(t.teamid)))
+      }
+      const survivingNames = (teams ?? [])
+        .filter((t) => !teamsToDelete.some((d) => d.teamid === t.teamid))
+        .map((t) => t.teamname)
+      const names = pickAnimalNames(sizes.length, survivingNames)
       let cursor = 0
       // Sequential, not parallel: team ids are assigned by the API as
       // "current max + 1", so creating several teams at once risks two
@@ -108,23 +149,58 @@ export default function TeamsPage() {
     }
   }
 
+  async function submitShuffle() {
+    if (shuffleReshuffle && eventIsLive) {
+      toast.error('Teams are locked in once the event is live')
+      return
+    }
+    // Reshuffling: any existing team whose entire roster is included in this
+    // shuffle gets torn down and replaced. A team with even one deselected
+    // player is left alone rather than orphaning that player's teammate.
+    const teamsToDelete: TeamRow[] = shuffleReshuffle
+      ? (teams ?? []).filter((t) => {
+          const ids = (Object.values(t.players) as Array<number | undefined>).filter(Boolean) as number[]
+          return ids.length > 0 && ids.every((id) => shuffleSelected.has(id))
+        })
+      : []
+
+    if (teamsToDelete.length > 0) {
+      try {
+        const eventScores = await api.get<ScoreRow[]>(`/scores?eventId=${eventId}`)
+        const deletedTeamIds = new Set(teamsToDelete.map((t) => t.teamid))
+        const hasTeamScores = eventScores.some(
+          (s) => s.playerid == null && s.teamid != null && deletedTeamIds.has(s.teamid) && s.strokes != null
+        )
+        if (hasTeamScores) {
+          setPendingTeamsToDelete(teamsToDelete)
+          setScoreWarningOpen(true)
+          return
+        }
+      } catch {
+        // If the score check itself fails, fall through and let the reshuffle proceed.
+      }
+    }
+
+    await performShuffle(teamsToDelete)
+  }
+
   async function submit() {
     if (!Number.isFinite(eventId)) {
-      alert('Invalid event. Please navigate from an event and try again.')
+      toast.error('Invalid event. Please navigate from an event and try again.')
       return
     }
     if (teamname.trim().length === 0) {
-      alert('Please enter a team name')
+      toast.error('Please enter a team name')
       return
     }
     if (selected.length < 1) {
-      alert('Select at least 1 player')
+      toast.error('Select at least 1 player')
       return
     }
     const conflicts = selected.filter((pid) => isTaken(pid, null))
     if (conflicts.length) {
       const names = conflicts.map((id) => playerMap[id] ? `${playerMap[id].lastname}, ${playerMap[id].firstname}` : `#${id}`).join(', ')
-      alert(`These players are already on a team for this event: ${names}`)
+      toast.error(`These players are already on a team for this event: ${names}`)
       return
     }
     const playersJson = {
@@ -140,7 +216,7 @@ export default function TeamsPage() {
       setSelected([])
       setStartinghole(null)
     } catch (e: any) {
-      alert(e.message || 'Failed to create team')
+      toast.error(e.message || 'Failed to create team')
     }
   }
 
@@ -151,6 +227,15 @@ export default function TeamsPage() {
       else if (set.size < 4) set.add(id)
       return Array.from(set)
     })
+  }
+
+  async function confirmDeleteTeam() {
+    if (!deleteTeamTarget) return
+    try {
+      await remove(deleteTeamTarget.teamid)
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to delete team')
+    }
   }
 
   function beginEdit(t: any) {
@@ -164,12 +249,12 @@ export default function TeamsPage() {
 
   async function submitEdit() {
     if (!editingTeamId) return
-    if (teamname.trim().length === 0) return alert('Please enter a team name')
-    if (selected.length < 1) return alert('Select at least 1 player')
+    if (teamname.trim().length === 0) return toast.error('Please enter a team name')
+    if (selected.length < 1) return toast.error('Select at least 1 player')
     const conflicts = selected.filter((pid) => isTaken(pid, editingTeamId))
     if (conflicts.length) {
       const names = conflicts.map((id) => playerMap[id] ? `${playerMap[id].lastname}, ${playerMap[id].firstname}` : `#${id}`).join(', ')
-      return alert(`These players are already on another team for this event: ${names}`)
+      return toast.error(`These players are already on another team for this event: ${names}`)
     }
     const playersJson = {
       player1: selected[0],
@@ -185,7 +270,7 @@ export default function TeamsPage() {
       setSelected([])
       setStartinghole(null)
     } catch (e: any) {
-      alert(e.message || 'Failed to update team')
+      toast.error(e.message || 'Failed to update team')
     }
   }
 
@@ -201,12 +286,24 @@ export default function TeamsPage() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Auto-Assign Teams</DialogTitle>
+              <DialogTitle>{shuffleReshuffle ? 'Reshuffle Teams' : 'Auto-Assign Teams'}</DialogTitle>
               <DialogDescription>
                 Randomly splits the selected players into teams and names them for you. Great for scrambles.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4">
+              {(teams?.length ?? 0) > 0 && (
+                eventIsLive ? (
+                  <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
+                    Teams are locked in once the event is live - only unassigned players can be added.
+                  </div>
+                ) : (
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={shuffleReshuffle} onChange={toggleReshuffleMode} />
+                    <span>Reshuffle players already on a team</span>
+                  </label>
+                )
+              )}
               <div>
                 <Label>Team size</Label>
                 <Select value={String(shuffleTeamSize)} onValueChange={(v) => setShuffleTeamSize(Number(v) as 3 | 4)}>
@@ -219,13 +316,13 @@ export default function TeamsPage() {
               </div>
               <div>
                 <Label>Players to assign ({shuffleSelected.size})</Label>
-                {unassignedPlayers.length === 0 ? (
+                {shufflePool.length === 0 ? (
                   <div className="text-sm text-muted-foreground mt-2">
                     Every player is already on a team for this event.
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2 max-h-64 overflow-auto border rounded p-2 mt-2">
-                    {unassignedPlayers.map((p) => (
+                    {shufflePool.map((p) => (
                       <label key={p.playerid} className="flex items-center gap-2 text-sm">
                         <input
                           type="checkbox"
@@ -248,7 +345,7 @@ export default function TeamsPage() {
                   <Button variant="outline">Cancel</Button>
                 </DialogClose>
                 <Button onClick={submitShuffle} disabled={shuffling || shuffleSizes.length === 0}>
-                  {shuffling ? 'Assigning...' : 'Assign Teams'}
+                  {shuffling ? 'Assigning...' : shuffleReshuffle ? 'Reshuffle Teams' : 'Assign Teams'}
                 </Button>
               </div>
             </div>
@@ -319,7 +416,7 @@ export default function TeamsPage() {
               {isAdmin && (
               <div className="mt-2 sm:mt-0 flex gap-2 w-full sm:w-auto">
                 <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => beginEdit(t)}>Edit</Button>
-                <Button size="sm" variant="destructive" className="flex-1 sm:flex-none" onClick={async () => { if (confirm('Delete this team?')) { try { await remove(t.teamid) } catch (e: any) { alert(e.message || 'Failed to delete team') } } }}>Delete</Button>
+                <Button size="sm" variant="destructive" className="flex-1 sm:flex-none" onClick={() => setDeleteTeamTarget(t)}>Delete</Button>
               </div>
               )}
             </div>
@@ -365,6 +462,22 @@ export default function TeamsPage() {
           </div>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={scoreWarningOpen}
+        onOpenChange={setScoreWarningOpen}
+        title="Reshuffle teams with recorded scores?"
+        description={`${pendingTeamsToDelete.length} team(s) being reshuffled have recorded scores for this round. Those scores will no longer be visible.`}
+        confirmLabel="Reshuffle Anyway"
+        onConfirm={() => performShuffle(pendingTeamsToDelete)}
+      />
+      <ConfirmDialog
+        open={!!deleteTeamTarget}
+        onOpenChange={(o) => { if (!o) setDeleteTeamTarget(null) }}
+        title="Delete team?"
+        description={deleteTeamTarget ? `Delete "${deleteTeamTarget.teamname}"? This cannot be undone.` : ''}
+        confirmLabel="Delete"
+        onConfirm={confirmDeleteTeam}
+      />
     </div>
   )
 }

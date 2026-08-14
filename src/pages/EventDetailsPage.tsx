@@ -7,10 +7,13 @@ import { Label } from '@/components/ui/label'
 import { useState, useEffect } from 'react'
 import type { EventRow } from '@/types'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import QRCode from 'react-qr-code'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
 import CourseLookup from '@/components/CourseLookup'
+import { statusBadgeClass } from '@/utils/format'
 
 export default function EventDetailsPage() {
   const params = useParams()
@@ -20,6 +23,7 @@ export default function EventDetailsPage() {
   const { isAdmin } = useAuth()
 
   const [form, setForm] = useState<EventRow | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 
   useEffect(() => setForm(event ?? null), [event])
 
@@ -49,8 +53,14 @@ export default function EventDetailsPage() {
     }
   }
 
+  function setStatus(status: EventRow['status']) {
+    // Marking an event Completed freezes scoring too - that's the point of
+    // "done". Moving to Upcoming/In Progress leaves the lock as the admin
+    // set it (Lock/Unlock stays a separate, manual control otherwise).
+    setForm((f) => f && { ...f, status, islocked: status === 'Completed' ? true : f.islocked })
+  }
+
   async function deleteEvent() {
-    if (!confirm('Delete this event? This cannot be undone.')) return
     try {
       await api.del(`/events/${id}`)
       toast.success('Event deleted')
@@ -62,13 +72,16 @@ export default function EventDetailsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-xl font-semibold">Event Details</h1>
+      <div className="flex justify-between items-center gap-2">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-semibold">Event Details</h1>
+          <Badge className={statusBadgeClass(form.status)}>{form.status}</Badge>
+        </div>
         {isAdmin && (
         <div className="flex gap-2">
           <Button variant={form.islocked ? 'secondary' : 'default'} onClick={() => setForm({ ...form, islocked: !form.islocked })}>{form.islocked ? 'Unlock' : 'Lock'}</Button>
           <Button onClick={save}>Save</Button>
-          <Button variant="destructive" onClick={deleteEvent}>Delete</Button>
+          <Button variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>Delete</Button>
         </div>
         )}
       </div>
@@ -95,6 +108,17 @@ export default function EventDetailsPage() {
         <div>
           <Label>Tee</Label>
           <Input disabled={!isAdmin} value={form.tees ?? ''} onChange={(e) => setForm({ ...form, tees: e.target.value })} />
+        </div>
+        <div>
+          <Label>Status</Label>
+          <Select disabled={!isAdmin} value={form.status} onValueChange={(v) => setStatus(v as EventRow['status'])}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {['Upcoming', 'In Progress', 'Completed'].map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <Label>Format</Label>
@@ -149,6 +173,14 @@ export default function EventDetailsPage() {
         </div>
         <Button variant="outline" onClick={() => navigator.clipboard.writeText(window.location.origin + '/scoring?code=' + form.sharecode)}>Copy link</Button>
       </div>
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete event?"
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={deleteEvent}
+      />
     </div>
   )
 }

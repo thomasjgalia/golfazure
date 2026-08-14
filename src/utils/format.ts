@@ -20,3 +20,9 @@ export function stablefordPoints(strokes: number, par: number) {
   if (diff === 1) return 1 // bogey
   return 0 // double bogey or worse
 }
+
+export function statusBadgeClass(status: string | null | undefined) {
+  if (status === 'In Progress') return 'border-success bg-success/10 text-success'
+  if (status === 'Completed') return 'border-input bg-muted text-muted-foreground'
+  return 'border-info bg-info/10 text-info' // Upcoming
+}
