@@ -7,6 +7,7 @@ import App from './root/App'
 import EventsListPage from './pages/EventsListPage'
 import EventDetailsPage from './pages/EventDetailsPage'
 import PlayersPage from './pages/PlayersPage'
+import PlayerHistoryPage from './pages/PlayerHistoryPage'
 import TeamsPage from './pages/TeamsPage'
 import ScoringPage from './pages/ScoringPage'
 import ScorecardPage from './pages/ScorecardPage'
@@ -29,6 +30,7 @@ const router = createBrowserRouter([
           { path: 'events/:id', element: <EventDetailsPage /> },
           { path: 'events/:id/teams', element: <TeamsPage /> },
           { path: 'players', element: <PlayersPage /> },
+          { path: 'players/:id/history', element: <PlayerHistoryPage /> },
         ],
       },
       { path: 'leaderboard', element: <LeaderboardPage /> },

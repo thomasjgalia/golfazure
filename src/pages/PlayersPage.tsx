@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { usePlayers } from '@/hooks/usePlayers'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogClose } from '@/components/ui/dialog'
@@ -145,13 +146,18 @@ export default function PlayersPage() {
       <div className="grid gap-1.5">
         {players?.map((p) => (
           <div key={p.playerid} className="border rounded px-3 py-1.5 flex items-center justify-between gap-2 active:scale-[0.995] transition">
-            <div className="min-w-0 flex items-baseline gap-2">
+            <Link to={`/players/${p.playerid}/history`} className="min-w-0 flex items-baseline gap-2 flex-1">
               <span className="font-medium truncate">{p.lastname}, {p.firstname}</span>
               <span className="text-xs text-muted-foreground shrink-0">HC {p.handicap ?? '-'}</span>
+            </Link>
+            <div className="flex gap-2 shrink-0">
+              <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
+                <Link to={`/players/${p.playerid}/history`}>History</Link>
+              </Button>
+              {isAdmin && (
+                <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => beginEdit(p)}>Edit</Button>
+              )}
             </div>
-            {isAdmin && (
-              <Button size="sm" variant="outline" className="h-7 px-2 text-xs shrink-0" onClick={() => beginEdit(p)}>Edit</Button>
-            )}
           </div>
         ))}
       </div>

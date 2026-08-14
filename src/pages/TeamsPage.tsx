@@ -62,6 +62,11 @@ export default function TeamsPage() {
     return tid != null && tid !== forTeamId
   }
 
+  // House rule: Tom's team is always the Frogs.
+  const frogsPlayerId = availablePlayers.find(
+    (p) => p.firstname.trim().toLowerCase() === 'tom' && p.lastname.trim().toLowerCase() === 'marturanto'
+  )?.playerid
+
   const unassignedPlayers = useMemo(
     () => availablePlayers.filter((p) => assignedMap[p.playerid] == null),
     [availablePlayers, assignedMap]
@@ -123,7 +128,8 @@ export default function TeamsPage() {
       const survivingNames = (teams ?? [])
         .filter((t) => !teamsToDelete.some((d) => d.teamid === t.teamid))
         .map((t) => t.teamname)
-      const names = pickAnimalNames(sizes.length, survivingNames)
+      const includesFrogsPlayer = frogsPlayerId != null && ids.includes(frogsPlayerId)
+      const names = pickAnimalNames(sizes.length, includesFrogsPlayer ? [...survivingNames, 'Frogs'] : survivingNames)
       let cursor = 0
       // Sequential, not parallel: team ids are assigned by the API as
       // "current max + 1", so creating several teams at once risks two
@@ -138,7 +144,8 @@ export default function TeamsPage() {
           player3: group[2],
           player4: group[3],
         }
-        await create({ eventid: eventId, teamname: names[i]!, players: playersJson, startinghole: null })
+        const teamname = frogsPlayerId != null && group.includes(frogsPlayerId) ? 'Frogs' : names[i]!
+        await create({ eventid: eventId, teamname, players: playersJson, startinghole: null })
       }
       toast.success(`Created ${sizes.length} team${sizes.length === 1 ? '' : 's'}`)
       setOpenShuffle(false)

@@ -8,7 +8,15 @@ export function colorForScore(scoreToPar: number) {
   return 'text-info'
 }
 
-export const formatDate = (iso: string) => new Date(iso).toLocaleDateString()
+// `new Date("2026-10-03")` parses the string as UTC midnight, so formatting
+// it in any timezone behind UTC (all of North America) rolls it back a day.
+// eventdate is a plain calendar date with no time/timezone meaning, so build
+// the Date from its components using the local-timezone constructor instead
+// of round-tripping through UTC parsing.
+export const formatDate = (iso: string) => {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y!, (m ?? 1) - 1, d ?? 1).toLocaleDateString()
+}
 
 // Standard Stableford points table. Higher is better - opposite of stroke play.
 export function stablefordPoints(strokes: number, par: number) {

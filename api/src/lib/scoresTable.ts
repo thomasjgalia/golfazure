@@ -130,3 +130,14 @@ export async function anyScoreReferencesPlayer(playerid: number): Promise<boolea
   }
   return false
 }
+
+// Full-table scan across all events - powers cross-event player history,
+// which is an on-demand read (not a hot path), so O(all scores) is fine.
+export async function listAllScores(): Promise<ScoreRecord[]> {
+  const client = await getClient()
+  const out: ScoreRecord[] = []
+  for await (const entity of client.listEntities()) {
+    out.push(toRecord(entity))
+  }
+  return out
+}

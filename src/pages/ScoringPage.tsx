@@ -27,6 +27,7 @@ function haptic(ms = 20) {
 // four separate saves (and four toasts) as you go.
 function PlayerScoreRow({
   player, par, savedValue, pendingValue, canEdit, locked, onChange, onClear, showPoints,
+  roundHolesCompleted, roundToPar, roundPoints,
 }: {
   player: PlayerRow
   par: number
@@ -37,6 +38,9 @@ function PlayerScoreRow({
   onChange: (strokes: number) => void
   onClear: () => void
   showPoints?: boolean
+  roundHolesCompleted: number
+  roundToPar: number
+  roundPoints: number
 }) {
   const displayValue = pendingValue ?? savedValue ?? par
   const registered = pendingValue !== undefined
@@ -57,6 +61,13 @@ function PlayerScoreRow({
           {showPoints && ` · ${stablefordPoints(displayValue, par)} pts`}
         </div>
       </div>
+      {roundHolesCompleted > 0 && (
+        <div className="text-xs text-muted-foreground">
+          Round: {showPoints
+            ? `${roundPoints} pts`
+            : `${roundToPar === 0 ? 'E' : roundToPar > 0 ? `+${roundToPar}` : roundToPar}`} thru {roundHolesCompleted} hole{roundHolesCompleted === 1 ? '' : 's'}
+        </div>
+      )}
       <div className="flex items-center gap-1">
         <Button size="sm" variant="outline" className="h-7 w-7 px-0" disabled={disabled} onClick={() => bump(-1)}>-</Button>
         <Input
@@ -305,6 +316,28 @@ export default function ScoringPage() {
     (scores ?? []).some((s) => s.playerid === p.playerid && s.holenumber === currentHole && s.strokes != null)
   ).length
 
+  // Individual mode's running total-to-par (or Stableford points) for one
+  // player across the whole round so far. Includes the current hole's
+  // pending (not-yet-saved) value so the total moves the instant a score is
+  // registered, matching the check-goes-green-immediately feedback above.
+  function playerRoundTotals(playerid: number) {
+    const byHole: Record<number, number> = {}
+    for (const s of scores ?? []) {
+      if (s.playerid === playerid && s.strokes != null) byHole[s.holenumber] = s.strokes
+    }
+    const pending = pendingScores[playerid]
+    if (pending !== undefined) byHole[currentHole] = pending
+    let strokes = 0, parSum = 0, points = 0
+    for (const [holeStr, v] of Object.entries(byHole)) {
+      const parVal = par[Number(holeStr) - 1] ?? 4
+      strokes += v
+      parSum += parVal
+      points += stablefordPoints(v, parVal)
+    }
+    const holesCompleted = Object.keys(byHole).length
+    return { holesCompleted, toPar: strokes - parSum, points }
+  }
+
   const individualBottomBar = useMemo(() => {
     if (!team || !isIndividual) return null
     return (
@@ -378,6 +411,7 @@ export default function ScoringPage() {
             <div className="space-y-1.5">
               {teamPlayers.map((p) => {
                 const s = scores?.find((s) => s.playerid === p.playerid && s.holenumber === currentHole)
+                const roundTotals = playerRoundTotals(p.playerid)
                 return (
                   <PlayerScoreRow
                     key={p.playerid}
@@ -390,6 +424,9 @@ export default function ScoringPage() {
                     onChange={(v) => registerPending(p.playerid, v)}
                     onClear={() => clearPlayerScore(p)}
                     showPoints={isStableford}
+                    roundHolesCompleted={roundTotals.holesCompleted}
+                    roundToPar={roundTotals.toPar}
+                    roundPoints={roundTotals.points}
                   />
                 )
               })}
