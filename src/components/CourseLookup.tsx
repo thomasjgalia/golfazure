@@ -20,7 +20,16 @@ export default function CourseLookup({ onApply }: { onApply: (fill: CourseFill) 
   const [course, setCourse] = useState<CourseDetail | null>(null)
   const [teeIndex, setTeeIndex] = useState<number | null>(null)
   const [loadingCourse, setLoadingCourse] = useState(false)
+  const [savedCourses, setSavedCourses] = useState<CourseDetail[]>([])
   const skipNextSearchRef = useRef(false)
+
+  // Courses already looked up (by anyone, for any event) - picking one of
+  // these applies instantly with no API call at all.
+  useEffect(() => {
+    api.get<{ courses: CourseDetail[] }>('/golf-courses/saved')
+      .then((data) => setSavedCourses(data.courses))
+      .catch(() => setSavedCourses([]))
+  }, [])
 
   useEffect(() => {
     // Picking a result sets `query` to the course name just to show it in the box -
@@ -58,6 +67,19 @@ export default function CourseLookup({ onApply }: { onApply: (fill: CourseFill) 
     onApply({ coursename: c.name, tees: tee.label, numberofholes: tee.numberOfHoles, parperhole: tee.parPerHole })
   }
 
+  function pickSavedCourse(data: CourseDetail) {
+    setResults([])
+    skipNextSearchRef.current = true
+    setQuery(data.name)
+    setCourse(data)
+    setTeeIndex(null)
+    setError(data.tees.length === 0 ? 'No tee/par data available for this course - enter details manually below' : null)
+    if (data.tees.length === 1) {
+      setTeeIndex(0)
+      applyTee(data, 0)
+    }
+  }
+
   async function pickCourse(result: SearchResult) {
     setResults([])
     skipNextSearchRef.current = true
@@ -82,6 +104,23 @@ export default function CourseLookup({ onApply }: { onApply: (fill: CourseFill) 
 
   return (
     <div className="relative">
+      {savedCourses.length > 0 && query.trim().length === 0 && (
+        <div className="mb-2">
+          <Label>Previously used courses</Label>
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {savedCourses.map((c) => (
+              <button
+                type="button"
+                key={c.id}
+                className="text-xs border rounded-full px-2.5 py-1 hover:bg-muted"
+                onClick={() => pickSavedCourse(c)}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <Label>Look up course (optional)</Label>
       <Input
         placeholder="Search for a course to autofill par..."

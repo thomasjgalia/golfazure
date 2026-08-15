@@ -28,7 +28,7 @@ export default function EventsListPage() {
     eventdate: new Date().toISOString().slice(0, 10),
     coursename: '',
     tees: null,
-    format: 'Stroke Play',
+    format: 'Scramble',
     numberofholes: 18,
     parperhole: defaultPar(18),
     islocked: false,

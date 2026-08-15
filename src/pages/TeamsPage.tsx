@@ -1,4 +1,5 @@
-﻿import { useParams } from 'react-router-dom'
+﻿import { useParams, Link } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { useEvent } from '@/hooks/useEvents'
 import { useTeams } from '@/hooks/useTeams'
 import { usePlayers } from '@/hooks/usePlayers'
@@ -74,19 +75,27 @@ export default function TeamsPage() {
 
   useEffect(() => { refresh() }, [])
 
-  useEffect(() => {
-    if (openShuffle) {
-      setShuffleSelected(new Set(unassignedPlayers.map((p) => p.playerid)))
-      setShuffleReshuffle(false)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openShuffle])
-
   // Reshuffle mode widens the player pool to everyone (not just unassigned)
   // and, by default, selects exactly the players who are already teamed up
   // for this event - that's "reshuffle the outing", with room to fold in a
   // late-arriving unassigned player if the admin checks them too.
   const shufflePool = shuffleReshuffle ? availablePlayers : unassignedPlayers
+
+  function openAssignDialog() {
+    setShuffleSelected(new Set(unassignedPlayers.map((p) => p.playerid)))
+    setShuffleReshuffle(false)
+    setOpenShuffle(true)
+  }
+
+  function openReshuffleDialog() {
+    if (eventIsLive) {
+      toast.error('Teams are locked in once the event is live')
+      return
+    }
+    setShuffleSelected(new Set(availablePlayers.filter((p) => assignedMap[p.playerid] != null).map((p) => p.playerid)))
+    setShuffleReshuffle(true)
+    setOpenShuffle(true)
+  }
 
   function toggleReshuffleMode() {
     if (eventIsLive) return
@@ -284,13 +293,19 @@ export default function TeamsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">Teams</h1>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="ghost" size="icon">
+            <Link to={`/events/${eventId}`} aria-label="Back to Event"><ArrowLeft className="h-4 w-4" /></Link>
+          </Button>
+          <h1 className="text-xl font-semibold">Teams</h1>
+        </div>
         {isAdmin && (
         <div className="flex gap-2">
+        {(teams?.length ?? 0) > 0 && (
+          <Button variant="outline" onClick={openReshuffleDialog} disabled={eventIsLive}>Reshuffle</Button>
+        )}
         <Dialog open={openShuffle} onOpenChange={setOpenShuffle}>
-          <DialogTrigger asChild>
-            <Button variant="outline">Auto-Assign Teams</Button>
-          </DialogTrigger>
+          <Button variant="outline" onClick={openAssignDialog}>Auto-Assign Teams</Button>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{shuffleReshuffle ? 'Reshuffle Teams' : 'Auto-Assign Teams'}</DialogTitle>

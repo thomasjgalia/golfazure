@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useSearchParams, Link } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { api } from '@/lib/api'
 import type { EventRow, ScoreRow, TeamRow, PlayerRow } from '@/types'
 import { initials } from '@/types'
@@ -194,9 +195,23 @@ export default function LeaderboardPage() {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <h1 className="text-xl font-semibold">Leaderboard</h1>
-        {event && <div className="text-sm text-muted-foreground">{event.eventname} • {formatDate(event.eventdate)} • {event.coursename}</div>}
+      <div className="flex items-center justify-between gap-2">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            {eventId ? (
+              <Button asChild variant="ghost" size="icon">
+                <Link to={`/events/${eventId}`} aria-label="Back to Event"><ArrowLeft className="h-4 w-4" /></Link>
+              </Button>
+            ) : null}
+            <h1 className="text-xl font-semibold">Leaderboard</h1>
+          </div>
+          {event && <div className="text-sm text-muted-foreground">{event.eventname} • {formatDate(event.eventdate)} • {event.coursename}</div>}
+        </div>
+        {eventId ? (
+          <Button asChild variant="outline">
+            <Link to={`/events/${eventId}/scoring`}>Scoring</Link>
+          </Button>
+        ) : null}
       </div>
 
       <div className="hidden md:block">

@@ -1,4 +1,5 @@
-﻿import { useNavigate, useParams } from 'react-router-dom'
+﻿import { useNavigate, useParams, Link } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { useEvent } from '@/hooks/useEvents'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
@@ -74,6 +75,9 @@ export default function EventDetailsPage() {
     <div className="space-y-4">
       <div className="flex justify-between items-center gap-2">
         <div className="flex items-center gap-2">
+          <Button asChild variant="ghost" size="icon">
+            <Link to="/events" aria-label="Back to Events"><ArrowLeft className="h-4 w-4" /></Link>
+          </Button>
           <h1 className="text-xl font-semibold">Event Details</h1>
           <Badge className={statusBadgeClass(form.status)}>{form.status}</Badge>
         </div>

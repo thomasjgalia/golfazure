@@ -1,5 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { requireAdmin } from '../lib/authz'
+import { getCachedCourse, upsertCachedCourse, listCachedCourses } from '../lib/courseCacheTable'
 
 // Thin server-side proxy for golfcourseapi.com - keeps the API key off the client
 // and normalizes their (fairly quirky) response shape into what the event form needs.
@@ -109,19 +110,44 @@ app.http('golf-courses-get', {
     const auth = requireAdmin(req)
     if (auth.error) return auth.error
     try {
-      const raw = await upstreamGet(`/v1/courses/${encodeURIComponent(req.params.id)}`)
+      const id = String(req.params.id)
+      const cached = await getCachedCourse(id)
+      if (cached) return { jsonBody: { id: cached.id, name: cached.name, tees: cached.tees } }
+
+      const raw = await upstreamGet(`/v1/courses/${encodeURIComponent(id)}`)
       // Unlike /v1/search (which returns courses at the top level), /v1/courses/{id}
       // wraps the course object under a "course" key.
       const data: UpstreamCourse = raw?.course ?? raw
-      return {
-        jsonBody: {
-          id: data.id,
-          name: data.course_name || data.club_name || 'Unknown course',
-          tees: normalizeTees(data.tees),
-        },
+      const course = {
+        id,
+        name: data.course_name || data.club_name || 'Unknown course',
+        tees: normalizeTees(data.tees),
       }
+      // Cache it regardless of whether it ends up applied to an event - the
+      // whole point is that the next lookup of this course (by anyone, for
+      // any event) never has to hit the rate-limited upstream API again.
+      await upsertCachedCourse(course)
+      return { jsonBody: course }
     } catch (err: any) {
       return { status: err.status || 500, jsonBody: { message: err.message } }
+    }
+  },
+})
+
+// GET /api/golf-courses/saved - previously looked-up courses, served
+// entirely from cache so picking one never touches the upstream API.
+app.http('golf-courses-saved', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  route: 'golf-courses/saved',
+  handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
+    const auth = requireAdmin(req)
+    if (auth.error) return auth.error
+    try {
+      const courses = await listCachedCourses()
+      return { jsonBody: { courses } }
+    } catch (err: any) {
+      return { status: 500, jsonBody: { message: err.message } }
     }
   },
 })
