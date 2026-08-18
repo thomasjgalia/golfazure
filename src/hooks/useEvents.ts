@@ -18,15 +18,16 @@ function normalizeEventRow(raw: any): EventRow {
   return { ...raw, parperhole: par } as EventRow
 }
 
-export function useEvents() {
+export function useEvents(zoneId?: number | null) {
   const [events, setEvents] = useState<EventRow[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   async function fetchAll() {
+    if (!zoneId) return
     setLoading(true)
     try {
-      const data = await api.get<any[]>('/events')
+      const data = await api.get<any[]>(`/events?zoneId=${zoneId}`)
       setEvents(data.map(normalizeEventRow))
     } catch (err: any) {
       setError(err.message)
@@ -36,7 +37,8 @@ export function useEvents() {
 
   useEffect(() => {
     fetchAll()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoneId])
 
   async function create(ev: NewEvent) {
     const data = await api.post<any>('/events', ev)

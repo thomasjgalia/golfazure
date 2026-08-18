@@ -4,7 +4,6 @@ const SESSION_TTL_SECONDS = 90 * 24 * 60 * 60 // 90 days - claimed profile shoul
 
 export type SessionPayload = {
   playerid: number
-  isAdmin: boolean
   exp: number
 }
 
@@ -22,8 +21,8 @@ function sign(data: string): string {
   return createHmac('sha256', getSecret()).update(data).digest('base64url')
 }
 
-export function signSession(playerid: number, isAdmin: boolean): string {
-  const payload: SessionPayload = { playerid, isAdmin, exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS }
+export function signSession(playerid: number): string {
+  const payload: SessionPayload = { playerid, exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS }
   const body = base64url(JSON.stringify(payload))
   return `${body}.${sign(body)}`
 }

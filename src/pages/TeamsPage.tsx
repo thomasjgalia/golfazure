@@ -2,7 +2,7 @@
 import { ArrowLeft } from 'lucide-react'
 import { useEvent } from '@/hooks/useEvents'
 import { useTeams } from '@/hooks/useTeams'
-import { usePlayers } from '@/hooks/usePlayers'
+import { useZoneMembers } from '@/hooks/useZones'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogClose } from '@/components/ui/dialog'
@@ -21,8 +21,10 @@ export default function TeamsPage() {
   const eventId = Number(params.id)
   const { event } = useEvent(eventId)
   const { teams, loading, create, update, remove, refresh } = useTeams(eventId)
-  const { players } = usePlayers()
-  const { isAdmin } = useAuth()
+  // Scoped to this event's zone roster, not the full global player
+  // directory - a team can only be built from people actually in this zone.
+  const { members: players } = useZoneMembers(event?.zoneid)
+  const { isZoneAdmin } = useAuth()
   // Once an event is live (or done), team rosters are locked in - reshuffling
   // would scramble who a hole's already-recorded scores belong to.
   const eventIsLive = event?.status === 'In Progress' || event?.status === 'Completed'
@@ -299,7 +301,7 @@ export default function TeamsPage() {
           </Button>
           <h1 className="text-xl font-semibold">Teams</h1>
         </div>
-        {isAdmin && (
+        {isZoneAdmin && (
         <div className="flex gap-2">
         {(teams?.length ?? 0) > 0 && (
           <Button variant="outline" onClick={openReshuffleDialog} disabled={eventIsLive}>Reshuffle</Button>
@@ -435,7 +437,7 @@ export default function TeamsPage() {
                 </div>
                 {t.startinghole && <div className="text-xs text-muted-foreground">Start: {t.startinghole}</div>}
               </div>
-              {isAdmin && (
+              {isZoneAdmin && (
               <div className="mt-2 sm:mt-0 flex gap-2 w-full sm:w-auto">
                 <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => beginEdit(t)}>Edit</Button>
                 <Button size="sm" variant="destructive" className="flex-1 sm:flex-none" onClick={() => setDeleteTeamTarget(t)}>Delete</Button>

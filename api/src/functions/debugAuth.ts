@@ -13,7 +13,7 @@ app.http('debug-auth-check', {
     let selfRoundTrip: string = 'skipped (no secret)'
     if (hasSecret) {
       try {
-        const t = signSession(0, true)
+        const t = signSession(0)
         selfRoundTrip = verifySession(t) ? 'ok' : 'signed but failed to verify itself'
       } catch (e: any) {
         selfRoundTrip = `threw: ${e.message}`
@@ -26,7 +26,7 @@ app.http('debug-auth-check', {
     if (hasAuthHeader) {
       const payload = verifySession(token)
       providedTokenResult = payload
-        ? `valid - playerid=${payload.playerid}, isAdmin=${payload.isAdmin}, expires=${new Date(payload.exp * 1000).toISOString()}`
+        ? `valid - playerid=${payload.playerid}, expires=${new Date(payload.exp * 1000).toISOString()}`
         : `invalid signature or expired (token length received: ${token.length})`
     }
 

@@ -12,18 +12,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { formatDate, statusBadgeClass } from '@/utils/format'
 import { Link } from 'react-router-dom'
-import { generateShareCode } from '@/utils/shareCode'
-import QRCode from 'react-qr-code'
 import { toast } from 'sonner'
 import CourseLookup from '@/components/CourseLookup'
 
 const defaultPar = (holes: number) => Array.from({ length: holes }, () => 4)
 
+type EventForm = Omit<NewEvent, 'zoneid'>
+
 export default function EventsListPage() {
-  const { events, loading, create } = useEvents()
-  const { isAdmin } = useAuth()
+  const { isZoneAdmin, currentZoneId } = useAuth()
+  const { events, loading, create } = useEvents(currentZoneId)
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState<NewEvent>(() => ({
+  const [form, setForm] = useState<EventForm>(() => ({
     eventname: '',
     eventdate: new Date().toISOString().slice(0, 10),
     coursename: '',
@@ -32,7 +32,6 @@ export default function EventsListPage() {
     numberofholes: 18,
     parperhole: defaultPar(18),
     islocked: false,
-    sharecode: generateShareCode(6),
     status: 'Upcoming',
   }))
 
@@ -41,9 +40,9 @@ export default function EventsListPage() {
   }
 
   async function onSubmit() {
-    if (!form.eventname || !form.coursename) return
+    if (!form.eventname || !form.coursename || !currentZoneId) return
     try {
-      await create(form)
+      await create({ ...form, zoneid: currentZoneId })
       setOpen(false)
     } catch (e: any) {
       toast.error(e.message || 'Failed to create event')
@@ -51,7 +50,7 @@ export default function EventsListPage() {
   }
 
   const bottomBarNode = useMemo(() => {
-    if (!isAdmin) return null
+    if (!isZoneAdmin) return null
     return (
       <Dialog open={open} onOpenChange={setOpen}>
         <div className="grid grid-cols-1">
@@ -140,16 +139,6 @@ export default function EventsListPage() {
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Share code</Label>
-                <Input value={form.sharecode} onChange={(e) => setForm({ ...form, sharecode: e.target.value.toUpperCase() })} />
-              </div>
-              <div className="flex items-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setForm({ ...form, sharecode: generateShareCode(6) })}>Regenerate</Button>
-                <div className="bg-white p-2 rounded border"><QRCode value={window.location.origin + '/scoring?code=' + form.sharecode} size={64} /></div>
-              </div>
-            </div>
           </div>
           <DFooter>
             <DialogClose asChild>
@@ -161,7 +150,7 @@ export default function EventsListPage() {
       </Dialog>
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin, open, form])
+  }, [isZoneAdmin, open, form])
 
   useBottomBar(bottomBarNode)
 
@@ -187,7 +176,6 @@ export default function EventsListPage() {
                 <div>Tees: {ev.tees ?? '-'}</div>
               </div>
               <div className="mt-1">Format: {ev.format ?? '-'}</div>
-              <div className="mt-1 text-xs text-muted-foreground">Share code: {ev.sharecode}</div>
             </CardContent>
             <CardFooter className="p-4 pt-2">
               <div className="grid grid-cols-2 gap-2 w-full">

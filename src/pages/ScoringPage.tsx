@@ -95,7 +95,7 @@ export default function ScoringPage() {
   const { event } = useEvent(eventId)
   const { teams } = useTeams(eventId)
   const { players } = usePlayers()
-  const { claimedPlayer, isAdmin } = useAuth()
+  const { claimedPlayer, isZoneAdmin } = useAuth()
   const [search, setSearch] = useSearchParams()
   const teamId = Number(search.get('teamId') || 0) || undefined
   const team = teams?.find((t) => t.teamid === teamId)
@@ -106,7 +106,7 @@ export default function ScoringPage() {
   const { scores, upsertScore, clearScore, refresh } = useScores(eventId, teamId)
 
   // Check if claimed player can edit this team's scores
-  const canEditScores = isAdmin || (team && claimedPlayer && (
+  const canEditScores = isZoneAdmin || (team && claimedPlayer && (
     team.players.player1 === claimedPlayer.playerid ||
     team.players.player2 === claimedPlayer.playerid ||
     team.players.player3 === claimedPlayer.playerid ||
@@ -405,7 +405,7 @@ export default function ScoringPage() {
             </div>
             {!canEditScores && (
               <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
-                {isAdmin ? 'Select a team to edit scores' : 'You can only edit scores for players on your team'}
+                {isZoneAdmin ? 'Select a team to edit scores' : 'You can only edit scores for players on your team'}
               </div>
             )}
             <div className="space-y-1.5">
@@ -506,7 +506,7 @@ export default function ScoringPage() {
             </div>
             {!canEditScores && (
               <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
-                {isAdmin ? 'Select a team to edit scores' : 'You can only edit scores for teams you are on'}
+                {isZoneAdmin ? 'Select a team to edit scores' : 'You can only edit scores for teams you are on'}
               </div>
             )}
             <div className="flex flex-wrap gap-1">

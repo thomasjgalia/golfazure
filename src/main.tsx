@@ -12,7 +12,8 @@ import TeamsPage from './pages/TeamsPage'
 import ScoringPage from './pages/ScoringPage'
 import ScorecardPage from './pages/ScorecardPage'
 import LeaderboardPage from './pages/LeaderboardPage'
-import PublicScoringPage from './pages/PublicScoringPage'
+import CreateZonePage from './pages/CreateZonePage'
+import ZoneRosterPage from './pages/ZoneRosterPage'
 import ProtectedRoute from './lib/ProtectedRoute'
 import { AuthProvider } from './lib/auth'
 import ClaimProfilePage from './pages/ClaimProfilePage'
@@ -31,12 +32,13 @@ const router = createBrowserRouter([
           { path: 'events/:id/teams', element: <TeamsPage /> },
           { path: 'players', element: <PlayersPage /> },
           { path: 'players/:id/history', element: <PlayerHistoryPage /> },
+          { path: 'leaderboard', element: <LeaderboardPage /> },
+          { path: 'events/:id/scoring', element: <ScoringPage /> },
+          { path: 'events/:id/scorecard', element: <ScorecardPage /> },
+          { path: 'zones/create', element: <CreateZonePage /> },
+          { path: 'zones/:zoneId/roster', element: <ZoneRosterPage /> },
         ],
       },
-      { path: 'leaderboard', element: <LeaderboardPage /> },
-      { path: 'events/:id/scoring', element: <ScoringPage /> },
-      { path: 'events/:id/scorecard', element: <ScorecardPage /> },
-      { path: 'scoring', element: <PublicScoringPage /> },
       { path: 'claim', element: <ClaimProfilePage /> },
     ],
   },

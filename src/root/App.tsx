@@ -1,9 +1,12 @@
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useState, ReactNode } from 'react'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { User } from 'lucide-react'
 import { BottomBarContext } from '@/lib/bottomBar'
+
+const CREATE_ZONE_OPTION = '__create__'
 
 // App shell: header and bottom bar are real flex siblings of the scrollable
 // content area, not `position: fixed` overlays. Fixed overlays fight with
@@ -11,8 +14,17 @@ import { BottomBarContext } from '@/lib/bottomBar'
 // behind the bar" bug); a fixed-height flex column with an internally
 // scrolling middle section sidesteps that entirely.
 export default function App() {
-  const { claimedPlayer, releaseProfile, isProfileClaimed } = useAuth()
+  const { claimedPlayer, releaseProfile, isProfileClaimed, zones, currentZoneId, setCurrentZone } = useAuth()
   const [bottomBar, setBottomBar] = useState<ReactNode>(null)
+  const nav = useNavigate()
+
+  function onZonePick(value: string) {
+    if (value === CREATE_ZONE_OPTION) {
+      nav('/zones/create')
+      return
+    }
+    setCurrentZone(Number(value))
+  }
 
   return (
     <div className="h-screen h-dvh flex flex-col overscroll-none">
@@ -26,6 +38,24 @@ export default function App() {
             <NavLink to="/players" className={({ isActive }) => isActive ? 'text-primary font-medium' : 'text-muted-foreground'}>Players</NavLink>
           </nav>
           <div className="flex items-center gap-2">
+            {/* A player in exactly one zone never needs to think about zones -
+                the switcher only shows up once there's an actual choice to make. */}
+            {isProfileClaimed && zones.length > 1 && (
+              <Select value={currentZoneId != null ? String(currentZoneId) : undefined} onValueChange={onZonePick}>
+                <SelectTrigger className="h-8 w-auto text-xs"><SelectValue placeholder="Select zone" /></SelectTrigger>
+                <SelectContent>
+                  {zones.map((z) => (
+                    <SelectItem key={z.zoneid} value={String(z.zoneid)}>{z.name}</SelectItem>
+                  ))}
+                  <SelectItem value={CREATE_ZONE_OPTION}>+ Create new zone</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+            {isProfileClaimed && zones.length <= 1 && (
+              <Button asChild variant="ghost" size="sm" className="text-xs text-muted-foreground">
+                <Link to="/zones/create">+ New Zone</Link>
+              </Button>
+            )}
             {isProfileClaimed ? (
               <>
                 <div className="text-xs text-muted-foreground hidden md:flex items-center gap-1">

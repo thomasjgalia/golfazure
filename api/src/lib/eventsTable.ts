@@ -13,8 +13,11 @@ export type EventRecord = {
   numberofholes: number
   parperhole: number[]
   islocked: boolean
-  sharecode: string
   status: string
+  // Optional for now - existing rows predate Zones and won't have this until
+  // the migration script backfills them into Zone 1. Every new event created
+  // once zones.ts lands will always supply it (see the rollout plan).
+  zoneid?: number
   created_at: string | null
   updated_at: string | null
 }
@@ -55,8 +58,8 @@ function toRecord(entity: any): EventRecord {
     numberofholes: entity.numberofholes,
     parperhole,
     islocked: !!entity.islocked,
-    sharecode: entity.sharecode,
     status: entity.status,
+    zoneid: entity.zoneid ?? undefined,
     created_at: entity.createdAt ?? null,
     updated_at: entity.updatedAt ?? null,
   }
@@ -87,11 +90,6 @@ export async function getEvent(id: number): Promise<EventRecord | null> {
     if (err.statusCode === 404) return null
     throw err
   }
-}
-
-export async function getEventBySharecode(code: string): Promise<EventRecord | null> {
-  const all = await listEvents()
-  return all.find((e) => e.sharecode?.toUpperCase() === code.toUpperCase()) ?? null
 }
 
 export async function createEvent(data: Omit<EventRecord, 'eventid' | 'created_at' | 'updated_at'>): Promise<EventRecord> {

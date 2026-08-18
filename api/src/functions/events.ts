@@ -1,41 +1,29 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { requireAdmin } from '../lib/authz'
-import { listEvents, getEvent, getEventBySharecode, createEvent, updateEvent, deleteEvent } from '../lib/eventsTable'
+import { requireZoneMember, requireZoneAdmin } from '../lib/authz'
+import { listEvents, getEvent, createEvent, updateEvent, deleteEvent } from '../lib/eventsTable'
 import { deleteTeamsForEvent } from '../lib/teamsTable'
 import { deleteScoresForEvent } from '../lib/scoresTable'
 
-// Fields an event row may be created/updated with.
+// Fields an event row may be created/updated with. zoneid is deliberately
+// excluded - an event's zone is fixed at creation, not editable afterward.
 const WRITABLE_FIELDS = [
   'eventname', 'eventdate', 'coursename', 'tees', 'format',
-  'numberofholes', 'parperhole', 'islocked', 'sharecode', 'status',
+  'numberofholes', 'parperhole', 'islocked', 'status',
 ]
 
-// GET /api/events
+// GET /api/events?zoneId=N
 app.http('events-list', {
   methods: ['GET'],
   authLevel: 'anonymous',
   route: 'events',
-  handler: async (_req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
-    try {
-      const events = await listEvents()
-      return { jsonBody: events }
-    } catch (err: any) {
-      return { status: 500, jsonBody: { message: err.message } }
-    }
-  },
-})
-
-// GET /api/events/sharecode/{code}
-app.http('events-by-sharecode', {
-  methods: ['GET'],
-  authLevel: 'anonymous',
-  route: 'events/sharecode/{code}',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
     try {
-      const code = (req.params.code || '').toUpperCase()
-      const event = await getEventBySharecode(code)
-      if (!event) return { status: 404, jsonBody: { message: 'Event not found' } }
-      return { jsonBody: event }
+      const zoneId = Number(req.query.get('zoneId'))
+      if (!zoneId) return { status: 400, jsonBody: { message: 'zoneId required' } }
+      const auth = await requireZoneMember(req, zoneId)
+      if (auth.error) return auth.error
+      const events = await listEvents()
+      return { jsonBody: events.filter((e) => e.zoneid === zoneId) }
     } catch (err: any) {
       return { status: 500, jsonBody: { message: err.message } }
     }
@@ -51,6 +39,8 @@ app.http('events-get', {
     try {
       const event = await getEvent(Number(req.params.id))
       if (!event) return { status: 404, jsonBody: { message: 'Event not found' } }
+      const auth = await requireZoneMember(req, event.zoneid ?? -1)
+      if (auth.error) return auth.error
       return { jsonBody: event }
     } catch (err: any) {
       return { status: 500, jsonBody: { message: err.message } }
@@ -64,10 +54,13 @@ app.http('events-create', {
   authLevel: 'anonymous',
   route: 'events',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
-    const auth = requireAdmin(req)
-    if (auth.error) return auth.error
     try {
       const b = (await req.json()) as any
+      const zoneid = Number(b.zoneid)
+      if (!zoneid) return { status: 400, jsonBody: { message: 'zoneid required' } }
+      const auth = await requireZoneAdmin(req, zoneid)
+      if (auth.error) return auth.error
+
       const event = await createEvent({
         eventname: b.eventname,
         eventdate: b.eventdate,
@@ -77,8 +70,8 @@ app.http('events-create', {
         numberofholes: b.numberofholes,
         parperhole: Array.isArray(b.parperhole) ? b.parperhole : JSON.parse(b.parperhole ?? '[]'),
         islocked: b.islocked ?? false,
-        sharecode: b.sharecode,
         status: b.status ?? 'Upcoming',
+        zoneid,
       })
       return { jsonBody: event }
     } catch (err: any) {
@@ -93,9 +86,13 @@ app.http('events-update', {
   authLevel: 'anonymous',
   route: 'events/{id:int}',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
-    const auth = requireAdmin(req)
-    if (auth.error) return auth.error
     try {
+      const id = Number(req.params.id)
+      const existing = await getEvent(id)
+      if (!existing) return { status: 404, jsonBody: { message: 'Event not found' } }
+      const auth = await requireZoneAdmin(req, existing.zoneid ?? -1)
+      if (auth.error) return auth.error
+
       const b = (await req.json()) as any
       const patch: Record<string, any> = {}
       for (const key of WRITABLE_FIELDS) {
@@ -104,7 +101,7 @@ app.http('events-update', {
       }
       if (Object.keys(patch).length === 0) return { status: 400, jsonBody: { message: 'No fields to update' } }
 
-      const event = await updateEvent(Number(req.params.id), patch)
+      const event = await updateEvent(id, patch)
       if (!event) return { status: 404, jsonBody: { message: 'Event not found' } }
       return { jsonBody: event }
     } catch (err: any) {
@@ -119,10 +116,13 @@ app.http('events-delete', {
   authLevel: 'anonymous',
   route: 'events/{id:int}',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
-    const auth = requireAdmin(req)
-    if (auth.error) return auth.error
     try {
       const id = Number(req.params.id)
+      const existing = await getEvent(id)
+      if (!existing) return { status: 404, jsonBody: { message: 'Event not found' } }
+      const auth = await requireZoneAdmin(req, existing.zoneid ?? -1)
+      if (auth.error) return auth.error
+
       // Teams and scores live in their own tables now - clean those up too
       // rather than leaving them behind as orphaned, unreachable data.
       await deleteTeamsForEvent(id)

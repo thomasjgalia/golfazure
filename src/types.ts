@@ -8,8 +8,8 @@
   numberofholes: number
   parperhole: number[] // length 9 or 18
   islocked: boolean
-  sharecode: string
   status: 'Upcoming' | 'In Progress' | 'Completed'
+  zoneid: number
   created_at?: string
   updated_at?: string
 }
@@ -22,9 +22,24 @@ export type PlayerRow = {
   email: string | null
   handicap: number | null
   profile_secret?: string
-  is_admin?: boolean
   created_at?: string
   updated_at?: string
+}
+
+export type ZoneRole = 'admin' | 'member'
+
+export type ZoneRow = {
+  zoneid: number
+  name: string
+  createdBy: number
+  created_at?: string
+}
+
+// A player's membership in one zone, as returned inline by claim/zones-mine.
+export type ZoneMembershipRow = {
+  zoneid: number
+  name: string
+  role: ZoneRole
 }
 
 export type TeamRow = {

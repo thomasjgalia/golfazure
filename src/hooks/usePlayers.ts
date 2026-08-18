@@ -22,8 +22,10 @@ export function usePlayers() {
     fetchAll()
   }, [])
 
-  async function create(player: NewPlayer) {
-    const data = await api.post<PlayerRow>('/players', player)
+  // Creating a player now always attaches them to a zone in the same action
+  // (the API creates the membership row server-side).
+  async function create(player: NewPlayer, zoneid: number) {
+    const data = await api.post<PlayerRow>('/players', { ...player, zoneid })
     setPlayers((prev) => (prev ? [...prev, data] : [data]))
     toast.success('Player created')
     return data
@@ -36,18 +38,16 @@ export function usePlayers() {
     return data
   }
 
-  async function remove(id: number) {
+  // Removes the player from the given zone; only fully deletes their global
+  // record if that was their last zone membership anywhere.
+  async function remove(id: number, zoneid: number) {
     try {
-      await api.del(`/players/${id}`)
+      await api.del(`/players/${id}?zoneid=${zoneid}`)
       setPlayers((prev) => prev?.filter((p) => p.playerid !== id) ?? null)
-      toast.success('Player deleted')
+      toast.success('Player removed')
     } catch (err: any) {
       console.error('Delete error:', err)
-      if (err.message?.includes('Cannot delete player')) {
-        toast.error(err.message)
-      } else {
-        toast.error(`Failed to delete player: ${err.message}`)
-      }
+      toast.error(err.message || `Failed to remove player: ${err.message}`)
       throw err
     }
   }

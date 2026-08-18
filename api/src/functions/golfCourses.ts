@@ -1,5 +1,5 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { requireAdmin } from '../lib/authz'
+import { requireAnyZoneAdmin } from '../lib/authz'
 import { getCachedCourse, upsertCachedCourse, listCachedCourses } from '../lib/courseCacheTable'
 
 // Thin server-side proxy for golfcourseapi.com - keeps the API key off the client
@@ -79,7 +79,7 @@ app.http('golf-courses-search', {
   authLevel: 'anonymous',
   route: 'golf-courses/search',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
-    const auth = requireAdmin(req)
+    const auth = await requireAnyZoneAdmin(req)
     if (auth.error) return auth.error
     try {
       const q = (req.query.get('q') || '').trim()
@@ -107,7 +107,7 @@ app.http('golf-courses-get', {
   authLevel: 'anonymous',
   route: 'golf-courses/course/{id}',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
-    const auth = requireAdmin(req)
+    const auth = await requireAnyZoneAdmin(req)
     if (auth.error) return auth.error
     try {
       const id = String(req.params.id)
@@ -141,7 +141,7 @@ app.http('golf-courses-saved', {
   authLevel: 'anonymous',
   route: 'golf-courses/saved',
   handler: async (req: HttpRequest, _ctx: InvocationContext): Promise<HttpResponseInit> => {
-    const auth = requireAdmin(req)
+    const auth = await requireAnyZoneAdmin(req)
     if (auth.error) return auth.error
     try {
       const courses = await listCachedCourses()

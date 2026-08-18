@@ -13,7 +13,7 @@ import { toast } from 'sonner'
 
 export default function PlayersPage() {
   const { players, loading, create, update, remove } = usePlayers()
-  const { isAdmin } = useAuth()
+  const { isZoneAdmin, currentZoneId } = useAuth()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<NewPlayer & { profile_secret?: string }>({ firstname: '', lastname: '', phone: '', email: '', handicap: 18, profile_secret: '' })
 
@@ -28,8 +28,9 @@ export default function PlayersPage() {
       toast.error('Please complete all required fields. Email, if provided, must be valid. Handicap defaults to 18 and is required.')
       return
     }
+    if (!currentZoneId) return
     try {
-      await create({ firstname: form.firstname, lastname: form.lastname, email: form.email || null, phone: null, handicap: form.handicap, profile_secret: form.profile_secret })
+      await create({ firstname: form.firstname, lastname: form.lastname, email: form.email || null, phone: null, handicap: form.handicap, profile_secret: form.profile_secret }, currentZoneId)
       setOpen(false)
       setForm({ firstname: '', lastname: '', phone: '', email: '', handicap: 18, profile_secret: '' })
     } catch (e: any) {
@@ -76,9 +77,9 @@ export default function PlayersPage() {
   }
 
   async function deleteEditing() {
-    if (!editing) return
+    if (!editing || !currentZoneId) return
     try {
-      await remove(editing.playerid)
+      await remove(editing.playerid, currentZoneId)
       setOpenEdit(false)
       setEditing(null)
     } catch {
@@ -87,7 +88,7 @@ export default function PlayersPage() {
   }
 
   const bottomBarNode = useMemo(() => {
-    if (!isAdmin) return null
+    if (!isZoneAdmin) return null
     return (
       <Dialog open={open} onOpenChange={setOpen}>
         <div className="grid grid-cols-1">
@@ -133,13 +134,20 @@ export default function PlayersPage() {
       </Dialog>
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin, open, form])
+  }, [isZoneAdmin, open, form])
 
   useBottomBar(bottomBarNode)
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Players</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold">Players</h1>
+        {isZoneAdmin && currentZoneId && (
+          <Button asChild variant="outline" size="sm">
+            <Link to={`/zones/${currentZoneId}/roster`}>Manage Zone Roster</Link>
+          </Button>
+        )}
+      </div>
 
       {loading && <div>Loading...</div>}
 
@@ -154,7 +162,7 @@ export default function PlayersPage() {
               <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
                 <Link to={`/players/${p.playerid}/history`}>History</Link>
               </Button>
-              {isAdmin && (
+              {isZoneAdmin && (
                 <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => beginEdit(p)}>Edit</Button>
               )}
             </div>
@@ -193,7 +201,7 @@ export default function PlayersPage() {
             </div>
           </div>
           <div className="flex justify-between gap-2">
-            <Button variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>Delete</Button>
+            <Button variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>Remove from Zone</Button>
             <div className="flex gap-2">
               <DialogClose asChild>
                 <Button variant="outline">Cancel</Button>
@@ -206,9 +214,9 @@ export default function PlayersPage() {
       <ConfirmDialog
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
-        title="Delete player?"
-        description="This cannot be undone."
-        confirmLabel="Delete"
+        title="Remove from zone?"
+        description="Removes them from this zone. Their player record and history are kept unless this was their last remaining zone."
+        confirmLabel="Remove"
         onConfirm={deleteEditing}
       />
     </div>

@@ -7,6 +7,12 @@ export default defineConfig({
   plugins: [react(), tsconfigPaths()],
   server: {
     port: 5173,
+    proxy: {
+      // Mirrors Azure Static Web Apps' hosted behavior, where the app and
+      // its linked API share one origin - locally, `func start` serves the
+      // API on 7071, so forward /api there instead of 404ing against Vite.
+      '/api': { target: 'http://localhost:7071', changeOrigin: true },
+    },
   },
 })
 

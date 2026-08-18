@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { PlayerRow } from '@/types'
+import { PlayerRow, ZoneMembershipRow } from '@/types'
+
+type ClaimablePlayer = Pick<PlayerRow, 'playerid' | 'firstname' | 'lastname'>
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,7 +22,7 @@ import { UserCheck, ArrowLeft } from 'lucide-react'
 export default function ClaimProfilePage() {
   const navigate = useNavigate()
   const { claimProfile, isProfileClaimed } = useAuth()
-  const [players, setPlayers] = useState<PlayerRow[]>([])
+  const [players, setPlayers] = useState<ClaimablePlayer[]>([])
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>('')
   const [secret, setSecret] = useState('')
   const [loading, setLoading] = useState(false)
@@ -37,7 +39,7 @@ export default function ClaimProfilePage() {
 
   async function loadPlayers() {
     try {
-      const data = await api.get<PlayerRow[]>('/players')
+      const data = await api.get<ClaimablePlayer[]>('/players/claimable')
       setPlayers(data || [])
     } catch (error) {
       toast.error('Failed to load players')
@@ -59,11 +61,11 @@ export default function ClaimProfilePage() {
     setLoading(true)
     try {
       // The secret is verified server-side - it's never sent to the browser for comparison.
-      const { token, player } = await api.post<{ token: string; player: PlayerRow }>('/auth/claim', {
+      const { token, player, zones } = await api.post<{ token: string; player: PlayerRow; zones: ZoneMembershipRow[] }>('/auth/claim', {
         playerid: parseInt(selectedPlayerId),
         secret: secret.trim(),
       })
-      claimProfile(token, player)
+      claimProfile(token, player, zones)
       toast.success(`Welcome, ${player.firstname}!`)
       navigate('/')
     } catch (error: any) {

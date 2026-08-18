@@ -16,11 +16,15 @@ export type PlayerRecord = {
   phone: string | null
   handicap: number | null
   profile_secret: string | null
-  is_admin: boolean
   created_at: string | null
   updated_at: string | null
 }
 
+// isAdmin/is_admin is retired - admin-ness is now a per-zone role looked up
+// via ZoneMembership, never a flag on the player themselves. This table is
+// shared with the cornholeazure app, so existing rows keep their stale
+// isAdmin column rather than being actively stripped (cheaper and safer
+// than a cleanup migration on a table another app also reads).
 type StoredFields = {
   firstname: string
   lastname: string
@@ -28,7 +32,6 @@ type StoredFields = {
   phone: string | null
   handicap: number | null
   profileSecret: string | null
-  isAdmin: boolean
   createdAt: string | null
   updatedAt: string | null
 }
@@ -61,7 +64,6 @@ function toRecord(entity: any): PlayerRecord {
     phone: entity.phone ?? null,
     handicap: entity.handicap ?? null,
     profile_secret: entity.profileSecret ?? null,
-    is_admin: !!entity.isAdmin,
     created_at: entity.createdAt ?? null,
     updated_at: entity.updatedAt ?? null,
   }
@@ -118,7 +120,6 @@ export async function createPlayer(data: {
     phone: data.phone,
     handicap: data.handicap,
     profileSecret: data.profile_secret,
-    isAdmin: false,
     createdAt: now,
     updatedAt: now,
   }
@@ -141,7 +142,6 @@ export async function updatePlayer(
     phone: 'phone' in patch ? patch.phone ?? null : current.phone,
     handicap: 'handicap' in patch ? patch.handicap ?? null : current.handicap,
     profileSecret: 'profile_secret' in patch ? patch.profile_secret ?? null : current.profile_secret,
-    isAdmin: current.is_admin,
     createdAt: current.created_at,
     updatedAt: new Date().toISOString(),
   }

@@ -10,7 +10,6 @@ import type { EventRow } from '@/types'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import QRCode from 'react-qr-code'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
 import CourseLookup from '@/components/CourseLookup'
@@ -21,7 +20,7 @@ export default function EventDetailsPage() {
   const id = Number(params.id)
   const { event, loading, setEvent } = useEvent(id)
   const nav = useNavigate()
-  const { isAdmin } = useAuth()
+  const { isZoneAdmin } = useAuth()
 
   const [form, setForm] = useState<EventRow | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -44,7 +43,6 @@ export default function EventDetailsPage() {
         numberofholes: formEl.numberofholes,
         parperhole: formEl.parperhole,
         islocked: formEl.islocked,
-        sharecode: formEl.sharecode,
         status: formEl.status,
       })
       setEvent(data)
@@ -81,7 +79,7 @@ export default function EventDetailsPage() {
           <h1 className="text-xl font-semibold">Event Details</h1>
           <Badge className={statusBadgeClass(form.status)}>{form.status}</Badge>
         </div>
-        {isAdmin && (
+        {isZoneAdmin && (
         <div className="flex gap-2">
           <Button variant={form.islocked ? 'secondary' : 'default'} onClick={() => setForm({ ...form, islocked: !form.islocked })}>{form.islocked ? 'Unlock' : 'Lock'}</Button>
           <Button onClick={save}>Save</Button>
@@ -90,7 +88,7 @@ export default function EventDetailsPage() {
         )}
       </div>
 
-      {isAdmin && (
+      {isZoneAdmin && (
         <CourseLookup
           onApply={(fill) => setForm({ ...form, coursename: fill.coursename, tees: fill.tees, numberofholes: fill.numberofholes, parperhole: fill.parperhole })}
         />
@@ -99,23 +97,23 @@ export default function EventDetailsPage() {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Name</Label>
-          <Input disabled={!isAdmin} value={form.eventname} onChange={(e) => setForm({ ...form, eventname: e.target.value })} />
+          <Input disabled={!isZoneAdmin} value={form.eventname} onChange={(e) => setForm({ ...form, eventname: e.target.value })} />
         </div>
         <div>
           <Label>Date</Label>
-          <Input disabled={!isAdmin} type="date" value={form.eventdate} onChange={(e) => setForm({ ...form, eventdate: e.target.value })} />
+          <Input disabled={!isZoneAdmin} type="date" value={form.eventdate} onChange={(e) => setForm({ ...form, eventdate: e.target.value })} />
         </div>
         <div>
           <Label>Course</Label>
-          <Input disabled={!isAdmin} value={form.coursename} onChange={(e) => setForm({ ...form, coursename: e.target.value })} />
+          <Input disabled={!isZoneAdmin} value={form.coursename} onChange={(e) => setForm({ ...form, coursename: e.target.value })} />
         </div>
         <div>
           <Label>Tee</Label>
-          <Input disabled={!isAdmin} value={form.tees ?? ''} onChange={(e) => setForm({ ...form, tees: e.target.value })} />
+          <Input disabled={!isZoneAdmin} value={form.tees ?? ''} onChange={(e) => setForm({ ...form, tees: e.target.value })} />
         </div>
         <div>
           <Label>Status</Label>
-          <Select disabled={!isAdmin} value={form.status} onValueChange={(v) => setStatus(v as EventRow['status'])}>
+          <Select disabled={!isZoneAdmin} value={form.status} onValueChange={(v) => setStatus(v as EventRow['status'])}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {['Upcoming', 'In Progress', 'Completed'].map((s) => (
@@ -126,7 +124,7 @@ export default function EventDetailsPage() {
         </div>
         <div>
           <Label>Format</Label>
-          <Select disabled={!isAdmin} value={form.format ?? undefined} onValueChange={(v) => setForm({ ...form, format: v as EventRow['format'] })}>
+          <Select disabled={!isZoneAdmin} value={form.format ?? undefined} onValueChange={(v) => setForm({ ...form, format: v as EventRow['format'] })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {['Scramble', 'Best Ball', 'Stroke Play', 'Match Play', 'Stableford'].map((f) => (
@@ -137,7 +135,7 @@ export default function EventDetailsPage() {
         </div>
         <div>
           <Label>Holes</Label>
-          <Select disabled={!isAdmin} value={String(form.numberofholes)} onValueChange={(v) => setForm({ ...form, numberofholes: Number(v) })}>
+          <Select disabled={!isZoneAdmin} value={String(form.numberofholes)} onValueChange={(v) => setForm({ ...form, numberofholes: Number(v) })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="9">9</SelectItem>
@@ -154,7 +152,7 @@ export default function EventDetailsPage() {
                 type="number"
                 inputMode="numeric"
                 className="px-2 py-1 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                disabled={!isAdmin}
+                disabled={!isZoneAdmin}
                 value={p}
                 onChange={(e) => {
                   const next = [...form.parperhole]
@@ -167,16 +165,6 @@ export default function EventDetailsPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div>
-          <div className="text-sm text-muted-foreground">Share code</div>
-          <div className="text-lg font-mono">{form.sharecode}</div>
-        </div>
-        <div className="bg-white p-3 rounded border">
-          <QRCode value={window.location.origin + '/scoring?code=' + form.sharecode} size={96} />
-        </div>
-        <Button variant="outline" onClick={() => navigator.clipboard.writeText(window.location.origin + '/scoring?code=' + form.sharecode)}>Copy link</Button>
-      </div>
       <ConfirmDialog
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
