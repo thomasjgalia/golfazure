@@ -195,20 +195,20 @@ export default function LeaderboardPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="space-y-1">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2">
             {eventId ? (
-              <Button asChild variant="ghost" size="icon">
+              <Button asChild variant="ghost" size="icon" className="shrink-0">
                 <Link to={`/events/${eventId}`} aria-label="Back to Event"><ArrowLeft className="h-4 w-4" /></Link>
               </Button>
             ) : null}
-            <h1 className="text-xl font-semibold">Leaderboard</h1>
+            <h1 className="text-xl font-semibold truncate">Leaderboard</h1>
           </div>
-          {event && <div className="text-sm text-muted-foreground">{event.eventname} • {formatDate(event.eventdate)} • {event.coursename}</div>}
+          {event && <div className="text-sm text-muted-foreground truncate">{event.eventname} • {formatDate(event.eventdate)} • {event.coursename}</div>}
         </div>
         {eventId ? (
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" size="sm">
             <Link to={`/events/${eventId}/scoring`}>Scoring</Link>
           </Button>
         ) : null}

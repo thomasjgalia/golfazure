@@ -294,20 +294,20 @@ export default function TeamsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="icon">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Button asChild variant="ghost" size="icon" className="shrink-0">
             <Link to={`/events/${eventId}`} aria-label="Back to Event"><ArrowLeft className="h-4 w-4" /></Link>
           </Button>
-          <h1 className="text-xl font-semibold">Teams</h1>
+          <h1 className="text-xl font-semibold truncate">Teams</h1>
         </div>
         {isZoneAdmin && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
         {(teams?.length ?? 0) > 0 && (
-          <Button variant="outline" onClick={openReshuffleDialog} disabled={eventIsLive}>Reshuffle</Button>
+          <Button size="sm" variant="outline" onClick={openReshuffleDialog} disabled={eventIsLive}>Reshuffle</Button>
         )}
         <Dialog open={openShuffle} onOpenChange={setOpenShuffle}>
-          <Button variant="outline" onClick={openAssignDialog}>Auto-Assign Teams</Button>
+          <Button size="sm" variant="outline" onClick={openAssignDialog}>Auto-Assign Teams</Button>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{shuffleReshuffle ? 'Reshuffle Teams' : 'Auto-Assign Teams'}</DialogTitle>
@@ -377,7 +377,7 @@ export default function TeamsPage() {
         </Dialog>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button>Create Team</Button>
+            <Button size="sm">Create Team</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>

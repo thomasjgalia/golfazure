@@ -366,16 +366,16 @@ export default function ScoringPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Scoring</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {event && team && (
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" size="sm">
               <Link to={`/events/${event.eventid}/scorecard?teamId=${team.teamid}`}>Scorecard</Link>
             </Button>
           )}
           {event && (
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" size="sm">
               <Link to={`/leaderboard?eventId=${event.eventid}`}>Leaderboard</Link>
             </Button>
           )}

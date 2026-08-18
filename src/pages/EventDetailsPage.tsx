@@ -71,19 +71,19 @@ export default function EventDetailsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center gap-2">
-        <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="icon">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Button asChild variant="ghost" size="icon" className="shrink-0">
             <Link to="/events" aria-label="Back to Events"><ArrowLeft className="h-4 w-4" /></Link>
           </Button>
-          <h1 className="text-xl font-semibold">Event Details</h1>
-          <Badge className={statusBadgeClass(form.status)}>{form.status}</Badge>
+          <h1 className="text-xl font-semibold truncate">Event Details</h1>
+          <Badge className={`shrink-0 ${statusBadgeClass(form.status)}`}>{form.status}</Badge>
         </div>
         {isZoneAdmin && (
-        <div className="flex gap-2">
-          <Button variant={form.islocked ? 'secondary' : 'default'} onClick={() => setForm({ ...form, islocked: !form.islocked })}>{form.islocked ? 'Unlock' : 'Lock'}</Button>
-          <Button onClick={save}>Save</Button>
-          <Button variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>Delete</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant={form.islocked ? 'secondary' : 'default'} onClick={() => setForm({ ...form, islocked: !form.islocked })}>{form.islocked ? 'Unlock' : 'Lock'}</Button>
+          <Button size="sm" onClick={save}>Save</Button>
+          <Button size="sm" variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>Delete</Button>
         </div>
         )}
       </div>

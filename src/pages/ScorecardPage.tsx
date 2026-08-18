@@ -56,10 +56,10 @@ export default function ScorecardPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Scorecard</h1>
         {team && (
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" size="sm">
             <Link to={`/events/${eventId}/scoring?teamId=${team.teamid}`}>Back to Scoring</Link>
           </Button>
         )}

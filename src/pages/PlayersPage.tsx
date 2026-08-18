@@ -140,7 +140,7 @@ export default function PlayersPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Players</h1>
         {isZoneAdmin && currentZoneId && (
           <Button asChild variant="outline" size="sm">

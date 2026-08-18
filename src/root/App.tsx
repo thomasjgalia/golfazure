@@ -1,9 +1,9 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useState, ReactNode } from 'react'
+import { useEffect, useState, ReactNode } from 'react'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { User } from 'lucide-react'
+import { User, Plus } from 'lucide-react'
 import { BottomBarContext } from '@/lib/bottomBar'
 
 const CREATE_ZONE_OPTION = '__create__'
@@ -18,6 +18,29 @@ export default function App() {
   const [bottomBar, setBottomBar] = useState<ReactNode>(null)
   const nav = useNavigate()
 
+  // iOS Safari (and, less often, Android Chrome) can leave `100dvh` stuck at
+  // whatever the browser toolbar's height was on first paint, not updating
+  // as the toolbar collapses/expands during scroll - a pinch-zoom forces a
+  // layout recompute and "fixes" it, which is the tell. Track the real
+  // visible height ourselves via visualViewport and drive layout off that,
+  // falling back to 100dvh only until JS has run once.
+  useEffect(() => {
+    const vv = window.visualViewport
+    function setAppHeight() {
+      const h = vv?.height ?? window.innerHeight
+      document.documentElement.style.setProperty('--app-height', `${h}px`)
+    }
+    setAppHeight()
+    vv?.addEventListener('resize', setAppHeight)
+    vv?.addEventListener('scroll', setAppHeight)
+    window.addEventListener('resize', setAppHeight)
+    return () => {
+      vv?.removeEventListener('resize', setAppHeight)
+      vv?.removeEventListener('scroll', setAppHeight)
+      window.removeEventListener('resize', setAppHeight)
+    }
+  }, [])
+
   function onZonePick(value: string) {
     if (value === CREATE_ZONE_OPTION) {
       nav('/zones/create')
@@ -27,7 +50,7 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen h-dvh flex flex-col overscroll-none">
+    <div className="flex flex-col overscroll-none" style={{ height: 'var(--app-height, 100dvh)' }}>
       <header className="shrink-0 border-b bg-white" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="container flex h-14 items-center justify-between gap-4">
           <Link to="/" className="font-semibold">
@@ -42,7 +65,9 @@ export default function App() {
                 the switcher only shows up once there's an actual choice to make. */}
             {isProfileClaimed && zones.length > 1 && (
               <Select value={currentZoneId != null ? String(currentZoneId) : undefined} onValueChange={onZonePick}>
-                <SelectTrigger className="h-8 w-auto text-xs"><SelectValue placeholder="Select zone" /></SelectTrigger>
+                <SelectTrigger className="h-8 w-20 sm:w-auto max-w-[7rem] text-xs">
+                  <SelectValue placeholder="Zone" />
+                </SelectTrigger>
                 <SelectContent>
                   {zones.map((z) => (
                     <SelectItem key={z.zoneid} value={String(z.zoneid)}>{z.name}</SelectItem>
@@ -52,8 +77,11 @@ export default function App() {
               </Select>
             )}
             {isProfileClaimed && zones.length <= 1 && (
-              <Button asChild variant="ghost" size="sm" className="text-xs text-muted-foreground">
-                <Link to="/zones/create">+ New Zone</Link>
+              <Button asChild variant="ghost" size="sm" className="text-xs text-muted-foreground px-2">
+                <Link to="/zones/create" aria-label="Create new zone">
+                  <Plus className="h-3.5 w-3.5 sm:mr-1" />
+                  <span className="hidden sm:inline">New Zone</span>
+                </Link>
               </Button>
             )}
             {isProfileClaimed ? (

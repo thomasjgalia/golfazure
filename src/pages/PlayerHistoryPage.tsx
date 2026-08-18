@@ -59,14 +59,14 @@ export default function PlayerHistoryPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-semibold">{history.firstname} {history.lastname}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold truncate">{history.firstname} {history.lastname}</h1>
           <div className="text-sm text-muted-foreground">
             {history.events.length} event{history.events.length === 1 ? '' : 's'} played
           </div>
         </div>
-        <Button asChild variant="outline">
+        <Button asChild variant="outline" size="sm">
           <Link to="/players">Back to Players</Link>
         </Button>
       </div>
