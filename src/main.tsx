@@ -14,6 +14,7 @@ import ScorecardPage from './pages/ScorecardPage'
 import LeaderboardPage from './pages/LeaderboardPage'
 import CreateZonePage from './pages/CreateZonePage'
 import ZoneRosterPage from './pages/ZoneRosterPage'
+import HelpPage from './pages/HelpPage'
 import ProtectedRoute from './lib/ProtectedRoute'
 import { AuthProvider } from './lib/auth'
 import ClaimProfilePage from './pages/ClaimProfilePage'
@@ -40,6 +41,7 @@ const router = createBrowserRouter([
         ],
       },
       { path: 'claim', element: <ClaimProfilePage /> },
+      { path: 'help', element: <HelpPage /> },
     ],
   },
 ])

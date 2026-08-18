@@ -13,7 +13,7 @@ import { toast } from 'sonner'
 
 export default function PlayersPage() {
   const { players, loading, create, update, remove } = usePlayers()
-  const { isZoneAdmin, currentZoneId } = useAuth()
+  const { isZoneAdmin, currentZoneId, claimedPlayer } = useAuth()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<NewPlayer & { profile_secret?: string }>({ firstname: '', lastname: '', phone: '', email: '', handicap: 18, profile_secret: '' })
 
@@ -162,7 +162,7 @@ export default function PlayersPage() {
               <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
                 <Link to={`/players/${p.playerid}/history`}>History</Link>
               </Button>
-              {isZoneAdmin && (
+              {(isZoneAdmin || claimedPlayer?.playerid === p.playerid) && (
                 <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => beginEdit(p)}>Edit</Button>
               )}
             </div>
@@ -173,7 +173,7 @@ export default function PlayersPage() {
       <Dialog open={openEdit} onOpenChange={setOpenEdit}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Player</DialogTitle>
+            <DialogTitle>{claimedPlayer?.playerid === editing?.playerid ? 'Edit Your Profile' : 'Edit Player'}</DialogTitle>
             <DialogDescription>Update player details</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4">
@@ -201,7 +201,9 @@ export default function PlayersPage() {
             </div>
           </div>
           <div className="flex justify-between gap-2">
-            <Button variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>Remove from Zone</Button>
+            {isZoneAdmin ? (
+              <Button variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>Remove from Zone</Button>
+            ) : <div />}
             <div className="flex gap-2">
               <DialogClose asChild>
                 <Button variant="outline">Cancel</Button>

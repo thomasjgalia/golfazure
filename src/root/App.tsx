@@ -3,7 +3,7 @@ import { useEffect, useState, ReactNode } from 'react'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { User, Plus } from 'lucide-react'
+import { User, Plus, HelpCircle } from 'lucide-react'
 import { BottomBarContext } from '@/lib/bottomBar'
 
 const CREATE_ZONE_OPTION = '__create__'
@@ -61,6 +61,9 @@ export default function App() {
             <NavLink to="/players" className={({ isActive }) => isActive ? 'text-primary font-medium' : 'text-muted-foreground'}>Players</NavLink>
           </nav>
           <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground shrink-0">
+              <Link to="/help" aria-label="Help"><HelpCircle className="h-4 w-4" /></Link>
+            </Button>
             {/* A player in exactly one zone never needs to think about zones -
                 the switcher only shows up once there's an actual choice to make. */}
             {isProfileClaimed && zones.length > 1 && (

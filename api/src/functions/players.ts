@@ -263,7 +263,10 @@ app.http('players-update', {
     if (auth.error) return auth.error
     try {
       const id = Number(req.params.id)
-      if (!(await sharesAdminZoneWith(auth.session.playerid, id))) {
+      // A player can always edit their own profile; editing someone else's
+      // requires admin in a zone the target also belongs to.
+      const isSelf = auth.session.playerid === id
+      if (!isSelf && !(await sharesAdminZoneWith(auth.session.playerid, id))) {
         return { status: 403, jsonBody: { message: 'Admin access required in a zone this player belongs to' } }
       }
       const b = (await req.json()) as any
