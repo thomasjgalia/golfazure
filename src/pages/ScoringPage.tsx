@@ -52,39 +52,45 @@ function PlayerScoreRow({
     onChange(displayValue + delta)
   }
 
+  // Bright-sunlight readability: a filled background pill reads at a glance
+  // far better than colored text alone, and every control here is sized for
+  // a thumb (or a golf glove), not a mouse cursor.
+  const scoreBgCls = toPar < 0 ? 'bg-success/15 text-success' : toPar > 0 ? 'bg-danger/15 text-danger' : 'bg-info/15 text-info'
+
   return (
-    <div className="border rounded px-2 py-1.5 space-y-1">
+    <div className="border rounded-lg px-3 py-3 space-y-2.5">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-sm font-medium truncate">{player.firstname} {player.lastname}</div>
-        <div className={`text-xs font-semibold ${colorForScore(toPar)}`}>
-          {displayValue} ({toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : toPar})
-          {showPoints && ` · ${stablefordPoints(displayValue, par)} pts`}
+        <div className="text-xl font-bold truncate">{player.firstname} {player.lastname}</div>
+        <div className={`rounded-lg px-3 py-1 text-2xl font-bold whitespace-nowrap ${scoreBgCls}`}>
+          {displayValue}
+          <span className="text-lg font-semibold"> ({toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : toPar})</span>
+          {showPoints && <span className="text-lg font-semibold"> · {stablefordPoints(displayValue, par)}p</span>}
         </div>
       </div>
       {roundHolesCompleted > 0 && (
-        <div className="text-xs text-muted-foreground">
+        <div className="text-sm text-muted-foreground">
           Round: {showPoints
             ? `${roundPoints} pts`
             : `${roundToPar === 0 ? 'E' : roundToPar > 0 ? `+${roundToPar}` : roundToPar}`} thru {roundHolesCompleted} hole{roundHolesCompleted === 1 ? '' : 's'}
         </div>
       )}
-      <div className="flex items-center gap-1">
-        <Button size="sm" variant="outline" className="h-7 w-7 px-0" disabled={disabled} onClick={() => bump(-1)}>-</Button>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" className="h-16 w-16 shrink-0 text-3xl px-0" disabled={disabled} onClick={() => bump(-1)}>−</Button>
         <Input
           type="number"
-          className="w-12 h-7 text-center px-1"
+          className="h-16 min-w-0 flex-1 text-center text-3xl font-bold px-1"
           value={displayValue}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value ? Number(e.target.value) : par)}
         />
-        <Button size="sm" variant="outline" className="h-7 w-7 px-0" disabled={disabled} onClick={() => bump(1)}>+</Button>
-        <Button size="sm" variant={registered ? 'success' : 'default'} className="h-7 w-7 px-0" disabled={disabled} onClick={() => { haptic(); onChange(displayValue) }} title="Confirm this score">
-          <Check className="h-3.5 w-3.5" />
+        <Button variant="outline" className="h-16 w-16 shrink-0 text-3xl px-0" disabled={disabled} onClick={() => bump(1)}>+</Button>
+        <Button variant={registered ? 'success' : 'default'} className="h-16 w-16 shrink-0 px-0" disabled={disabled} onClick={() => { haptic(); onChange(displayValue) }} title="Confirm this score">
+          <Check className="h-8 w-8" />
         </Button>
-        {savedValue != null && !disabled && (
-          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-danger ml-auto" onClick={onClear}>Clear</Button>
-        )}
       </div>
+      {savedValue != null && !disabled && (
+        <Button variant="ghost" className="w-full h-10 text-danger" onClick={onClear}>Clear</Button>
+      )}
     </div>
   )
 }
@@ -342,8 +348,8 @@ export default function ScoringPage() {
     if (!team || !isIndividual) return null
     return (
       <div className="grid grid-cols-2 gap-2">
-        <Button variant="ghost" disabled={holes === 0} onClick={() => goToHoleIndividual(Math.max(1, currentHole - 1))}>Prev</Button>
-        <Button variant="ghost" disabled={holes === 0} onClick={() => goToHoleIndividual(Math.min(holes || 1, currentHole + 1))}>Next</Button>
+        <Button variant="ghost" className="h-14 text-lg" disabled={holes === 0} onClick={() => goToHoleIndividual(Math.max(1, currentHole - 1))}>Prev</Button>
+        <Button variant="ghost" className="h-14 text-lg" disabled={holes === 0} onClick={() => goToHoleIndividual(Math.min(holes || 1, currentHole + 1))}>Next</Button>
       </div>
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -353,10 +359,10 @@ export default function ScoringPage() {
     if (!team || isIndividual) return null
     return (
       <div className="grid grid-cols-4 gap-2">
-        <Button variant="ghost" disabled={holes === 0} onClick={() => handleSelectHole(Math.max(1, currentHole - 1))}>Prev</Button>
-        <Button variant="outline" onClick={() => { clear(); haptic() }} disabled={!!event?.islocked || !canEditScores}>Clear</Button>
-        <Button onClick={() => { save(); haptic() }} disabled={!!event?.islocked || !canEditScores}>Save</Button>
-        <Button variant="ghost" disabled={holes === 0} onClick={() => handleSelectHole(Math.min(holes || 1, currentHole + 1))}>Next</Button>
+        <Button variant="ghost" className="h-14 text-base" disabled={holes === 0} onClick={() => handleSelectHole(Math.max(1, currentHole - 1))}>Prev</Button>
+        <Button variant="outline" className="h-14 text-base" onClick={() => { clear(); haptic() }} disabled={!!event?.islocked || !canEditScores}>Clear</Button>
+        <Button className="h-14 text-base" onClick={() => { save(); haptic() }} disabled={!!event?.islocked || !canEditScores}>Save</Button>
+        <Button variant="ghost" className="h-14 text-base" disabled={holes === 0} onClick={() => handleSelectHole(Math.min(holes || 1, currentHole + 1))}>Next</Button>
       </div>
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -400,8 +406,8 @@ export default function ScoringPage() {
         <>
           <div className="border sticky top-0 z-20 bg-white rounded p-2 space-y-1.5">
             <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-              <div className="text-lg font-medium">Hole {currentHole} • Par {par[currentHole - 1] ?? 4}</div>
-              <div className="text-sm text-muted-foreground">{enteredCount}/{teamPlayers.length} entered</div>
+              <div className="text-2xl font-bold">Hole {currentHole} • Par {par[currentHole - 1] ?? 4}</div>
+              <div className="text-base text-muted-foreground">{enteredCount}/{teamPlayers.length} entered</div>
             </div>
             {!canEditScores && (
               <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
@@ -435,63 +441,6 @@ export default function ScoringPage() {
               )}
             </div>
           </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <div className="text-sm font-medium">Scorecard</div>
-              <Link to={`/events/${eventId}/scorecard?teamId=${team.teamid}`} className="text-xs text-primary">Open full view</Link>
-            </div>
-            <div className="overflow-x-auto border rounded">
-              <table className="text-xs">
-                <thead>
-                  <tr className="bg-muted/50">
-                    <th className="p-1.5 text-left sticky left-0 bg-muted/50 whitespace-nowrap">Player</th>
-                    {holeNumbers.map((h) => (
-                      <th key={h} className="p-1.5 text-center w-8">{h}</th>
-                    ))}
-                    <th className="p-1.5 text-center font-semibold">Tot</th>
-                  </tr>
-                  <tr className="text-muted-foreground">
-                    <th className="p-1.5 text-left sticky left-0 bg-white whitespace-nowrap">Par</th>
-                    {holeNumbers.map((h) => (
-                      <th key={h} className="p-1.5 text-center font-normal">{par[h - 1] ?? 4}</th>
-                    ))}
-                    <th className="p-1.5 text-center">{holeNumbers.reduce((a, h) => a + (par[h - 1] ?? 4), 0)}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {teamPlayers.map((p) => {
-                    const pByHole: Record<number, number> = {}
-                    for (const s of scores ?? []) {
-                      if (s.playerid === p.playerid && s.strokes != null) pByHole[s.holenumber] = s.strokes
-                    }
-                    const playedCount = Object.keys(pByHole).length
-                    const total = holeNumbers.reduce((a, h) => a + (pByHole[h] ?? 0), 0)
-                    return (
-                      <tr key={p.playerid} className="border-t">
-                        <td className="p-1.5 font-medium truncate sticky left-0 bg-white whitespace-nowrap">{p.firstname} {p.lastname[0]}.</td>
-                        {holeNumbers.map((h) => {
-                          const v = pByHole[h]
-                          const parVal = par[h - 1] ?? 4
-                          const toPar = v != null ? v - parVal : null
-                          return (
-                            <td
-                              key={h}
-                              className={`p-1.5 text-center cursor-pointer ${h === currentHole ? 'ring-2 ring-inset ring-primary' : ''} ${toPar == null ? '' : colorForScore(toPar)}`}
-                              onClick={() => goToHoleIndividual(h)}
-                            >
-                              {v ?? '-'}
-                            </td>
-                          )
-                        })}
-                        <td className="p-1.5 text-center font-semibold">{playedCount > 0 ? total : '-'}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </>
       )}
 
@@ -499,8 +448,8 @@ export default function ScoringPage() {
         <>
           <div className="border sticky top-0 z-20 bg-white rounded p-3 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="text-lg font-medium">Hole {currentHole} • Par {par[currentHole - 1] ?? 4}</div>
-              <div className="text-sm">
+              <div className="text-2xl font-bold">Hole {currentHole} • Par {par[currentHole - 1] ?? 4}</div>
+              <div className="text-base">
                 <span>Total: {totalStrokes}/{totalPar} ({totalToPar > 0 ? `+${totalToPar}` : totalToPar})</span>
               </div>
             </div>
@@ -509,25 +458,25 @@ export default function ScoringPage() {
                 {isZoneAdmin ? 'Select a team to edit scores' : 'You can only edit scores for teams you are on'}
               </div>
             )}
-            <div className="flex flex-wrap gap-1">
-              <Button size="sm" className="px-2" variant={strokes === ((par[currentHole - 1] ?? 4) - 2) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) - 2)} disabled={!canEditScores}>-2</Button>
-              <Button size="sm" className="px-2" variant={strokes === ((par[currentHole - 1] ?? 4) - 1) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) - 1)} disabled={!canEditScores}>-1</Button>
-              <Button size="sm" className="px-2" variant={strokes === (par[currentHole - 1] ?? 4) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4))} disabled={!canEditScores}>Par</Button>
-              <Button size="sm" className="px-2" variant={strokes === ((par[currentHole - 1] ?? 4) + 1) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) + 1)} disabled={!canEditScores}>+1</Button>
-              <Button size="sm" className="px-2" variant={strokes === ((par[currentHole - 1] ?? 4) + 2) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) + 2)} disabled={!canEditScores}>+2</Button>
+            <div className="grid grid-cols-5 gap-1.5">
+              <Button className="h-14 text-lg px-1" variant={strokes === ((par[currentHole - 1] ?? 4) - 2) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) - 2)} disabled={!canEditScores}>-2</Button>
+              <Button className="h-14 text-lg px-1" variant={strokes === ((par[currentHole - 1] ?? 4) - 1) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) - 1)} disabled={!canEditScores}>-1</Button>
+              <Button className="h-14 text-lg px-1" variant={strokes === (par[currentHole - 1] ?? 4) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4))} disabled={!canEditScores}>Par</Button>
+              <Button className="h-14 text-lg px-1" variant={strokes === ((par[currentHole - 1] ?? 4) + 1) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) + 1)} disabled={!canEditScores}>+1</Button>
+              <Button className="h-14 text-lg px-1" variant={strokes === ((par[currentHole - 1] ?? 4) + 2) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) + 2)} disabled={!canEditScores}>+2</Button>
             </div>
-            <div className="flex items-center gap-1">
-              <Button size="sm" variant="outline" onClick={() => handleQuickSave((strokes ?? (par[currentHole - 1] ?? 4)) - 1)} disabled={!canEditScores}>-</Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" className="h-16 w-16 shrink-0 text-3xl px-0" onClick={() => handleQuickSave((strokes ?? (par[currentHole - 1] ?? 4)) - 1)} disabled={!canEditScores}>−</Button>
               <Input
                 type="number"
-                className="w-16 h-8 text-center"
+                className="h-16 min-w-0 flex-1 text-center text-3xl font-bold px-1"
                 value={strokes ?? ''}
                 onChange={(e) => setStrokes(e.target.value ? Number(e.target.value) : null)}
                 onBlur={() => { if (strokes != null) handleQuickSave(strokes) }}
                 onKeyDown={(e) => { if (e.key === 'Enter' && strokes != null) handleQuickSave(strokes) }}
                 disabled={!canEditScores}
               />
-              <Button size="sm" variant="outline" onClick={() => handleQuickSave((strokes ?? (par[currentHole - 1] ?? 4)) + 1)} disabled={!canEditScores}>+</Button>
+              <Button variant="outline" className="h-16 w-16 shrink-0 text-3xl px-0" onClick={() => handleQuickSave((strokes ?? (par[currentHole - 1] ?? 4)) + 1)} disabled={!canEditScores}>+</Button>
             </div>
           </div>
 
@@ -547,17 +496,17 @@ export default function ScoringPage() {
                 return (
                   <button
                     key={h}
-                    className={`relative border rounded p-2 text-sm ${colorCls} ${h === currentHole ? 'ring-2 ring-primary' : ''}`}
+                    className={`relative border rounded p-3 text-base min-h-[3.75rem] ${colorCls} ${h === currentHole ? 'ring-2 ring-primary' : ''}`}
                     onClick={() => handleSelectHole(h)}
                     onContextMenu={(e) => { e.preventDefault(); if (s?.strokes != null && !event?.islocked) { clearScore(eventId, team.teamid, h, 'team'); toast.success(`Cleared hole ${h}`); haptic() } }}
                   >
-                    <div className="font-medium">{h}</div>
-                    <div className="text-[10px] text-muted-foreground">Par {parVal}</div>
+                    <div className="font-bold">{h}</div>
+                    <div className="text-xs text-muted-foreground">Par {parVal}</div>
                     {toPar != null && (
-                      <div className={`text-xs font-semibold ${colorForScore(toPar)}`}>{toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : toPar}</div>
+                      <div className={`text-sm font-semibold ${colorForScore(toPar)}`}>{toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : toPar}</div>
                     )}
                     {strokesVal != null && (
-                      <div className="absolute top-1 right-1 text-[10px] text-muted-foreground">{strokesVal} ({toPar === 0 ? 'E' : toPar! > 0 ? `+${toPar}` : toPar})</div>
+                      <div className="absolute top-1 right-1 text-xs text-muted-foreground">{strokesVal} ({toPar === 0 ? 'E' : toPar! > 0 ? `+${toPar}` : toPar})</div>
                     )}
                   </button>
                 )
@@ -581,17 +530,17 @@ export default function ScoringPage() {
                 return (
                   <button
                     key={h}
-                    className={`relative border rounded p-2 text-sm ${colorCls} ${h === currentHole ? 'ring-2 ring-primary' : ''}`}
+                    className={`relative border rounded p-3 text-base min-h-[3.75rem] ${colorCls} ${h === currentHole ? 'ring-2 ring-primary' : ''}`}
                     onClick={() => handleSelectHole(h)}
                     onContextMenu={(e) => { e.preventDefault(); if (s?.strokes != null && !event?.islocked) { clearScore(eventId, team.teamid, h, 'team'); toast.success(`Cleared hole ${h}`); haptic() } }}
                   >
-                    <div className="font-medium">{h}</div>
-                    <div className="text-[10px] text-muted-foreground">Par {parVal}</div>
+                    <div className="font-bold">{h}</div>
+                    <div className="text-xs text-muted-foreground">Par {parVal}</div>
                     {toPar != null && (
-                      <div className={`text-xs font-semibold ${colorForScore(toPar)}`}>{toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : toPar}</div>
+                      <div className={`text-sm font-semibold ${colorForScore(toPar)}`}>{toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : toPar}</div>
                     )}
                     {strokesVal != null && (
-                      <div className="absolute top-1 right-1 text-[10px] text-muted-foreground">{strokesVal} ({toPar === 0 ? 'E' : toPar! > 0 ? `+${toPar}` : toPar})</div>
+                      <div className="absolute top-1 right-1 text-xs text-muted-foreground">{strokesVal} ({toPar === 0 ? 'E' : toPar! > 0 ? `+${toPar}` : toPar})</div>
                     )}
                   </button>
                 )
