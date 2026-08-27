@@ -1,8 +1,0 @@
-import './auth'
-import './events'
-import './players'
-import './teams'
-import './scores'
-import './golfCourses'
-import './zones'
-import './debugAuth'

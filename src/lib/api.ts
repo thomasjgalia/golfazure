@@ -5,9 +5,11 @@ const BASE = '/api'
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken()
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  // Azure Static Web Apps reserves the standard Authorization header for its own
-  // proxy-to-Functions auth and overwrites anything the client sets there, so our
-  // session token has to travel under a custom header name instead.
+  // Historically required because Azure Static Web Apps reserved the standard
+  // Authorization header for its own proxy-to-Functions auth. That constraint
+  // is gone now that this runs on a plain Cloudflare Worker, but the custom
+  // header name is kept as-is -- changing it would mean touching both sides
+  // of the API for zero benefit on what was meant to be a backend-only port.
   if (token) headers['X-Session-Token'] = token
 
   const res = await fetch(`${BASE}${path}`, {

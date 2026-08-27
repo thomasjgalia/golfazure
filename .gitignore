@@ -8,11 +8,16 @@ dist/
 .env
 .env.local
 .env.*.local
+.dev.vars
 api/local.settings.json
+
+# wrangler local state
+.wrangler/
 
 # One-time migration exports - contain real player data (emails, phone
 # numbers, profile secrets in plaintext), never commit these
 migrate/
+scripts/seed_sol_zone.sql
 
 # Logs
 logs/

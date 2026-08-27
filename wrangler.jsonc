@@ -1,0 +1,23 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "golf",
+	"compatibility_date": "2026-08-27",
+	"main": "worker/index.ts",
+	"assets": {
+		"directory": "./dist",
+		"binding": "ASSETS",
+		"not_found_handling": "single-page-application",
+		"run_worker_first": ["/api/*"]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "golf",
+			"database_id": "5b8da00c-d662-44cc-af06-21715c89f74b"
+		}
+	],
+	"routes": [{ "pattern": "golf.soldelco.com", "custom_domain": true }],
+	"observability": {
+		"enabled": true
+	}
+}
