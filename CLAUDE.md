@@ -50,6 +50,16 @@ duplicate rows instead of the intended upsert. Score writes go through
 `INSERT ... ON CONFLICT(score_key) DO UPDATE ...`; don't "simplify" this back
 to the multi-column constraint without re-deriving why it was wrong.
 
+## Deployment is manual — always do it, don't just commit
+
+There is no CI/CD here (the old Azure Static Web Apps GitHub Actions
+workflow was deleted during the migration and nothing replaced it). Pushing
+to GitHub does **not** deploy anything. Treat "commit and push" and "ship
+this" as the same request: after committing, always also run
+`npm run worker:deploy` (build + `wrangler deploy`) so the change is
+actually live, rather than leaving deploy as a separate step the user has to
+ask for.
+
 ## Local dev
 
 Plain `npm run worker:dev` (`wrangler dev`, local D1) is fine here — unlike
