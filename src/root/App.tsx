@@ -3,7 +3,7 @@ import { useEffect, useState, ReactNode } from 'react'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { User, Plus, HelpCircle, ArrowLeft } from 'lucide-react'
+import { User, Plus, HelpCircle } from 'lucide-react'
 import { BottomBarContext } from '@/lib/bottomBar'
 
 const CREATE_ZONE_OPTION = '__create__'
@@ -54,14 +54,6 @@ export default function App() {
       <header className="shrink-0 border-b bg-white" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="container flex h-14 items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <a
-              href="https://soldelco.com"
-              className="flex items-center justify-center h-8 w-8 -ml-1 text-muted-foreground hover:text-foreground"
-              aria-label="Back to SOL Delco"
-              title="Back to SOL Delco"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </a>
             <Link to="/" className="font-semibold">
               SOL Golf
             </Link>

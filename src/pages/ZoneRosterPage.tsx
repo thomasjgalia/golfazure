@@ -105,7 +105,7 @@ export default function ZoneRosterPage() {
                   className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
                   onClick={() => handleAddExisting(p.playerid)}
                 >
-                  {p.lastname}, {p.firstname} {p.email && <span className="text-xs text-muted-foreground">({p.email})</span>}
+                  {p.firstname} {p.lastname} {p.email && <span className="text-xs text-muted-foreground">({p.email})</span>}
                 </button>
               ))}
             </div>
@@ -133,7 +133,7 @@ export default function ZoneRosterPage() {
         {members?.map((m) => (
           <div key={m.playerid} className="border rounded p-3 flex items-center justify-between gap-2">
             <div>
-              <div className="font-medium">{m.lastname}, {m.firstname}</div>
+              <div className="font-medium">{m.firstname} {m.lastname}</div>
               <div className="text-xs text-muted-foreground">{m.role === 'admin' ? 'Admin' : 'Member'}</div>
             </div>
             <div className="flex gap-2">

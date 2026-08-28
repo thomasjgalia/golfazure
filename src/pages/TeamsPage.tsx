@@ -217,7 +217,7 @@ export default function TeamsPage() {
     }
     const conflicts = selected.filter((pid) => isTaken(pid, null))
     if (conflicts.length) {
-      const names = conflicts.map((id) => playerMap[id] ? `${playerMap[id].lastname}, ${playerMap[id].firstname}` : `#${id}`).join(', ')
+      const names = conflicts.map((id) => playerMap[id] ? `${playerMap[id].firstname} ${playerMap[id].lastname}` : `#${id}`).join(', ')
       toast.error(`These players are already on a team for this event: ${names}`)
       return
     }
@@ -271,7 +271,7 @@ export default function TeamsPage() {
     if (selected.length < 1) return toast.error('Select at least 1 player')
     const conflicts = selected.filter((pid) => isTaken(pid, editingTeamId))
     if (conflicts.length) {
-      const names = conflicts.map((id) => playerMap[id] ? `${playerMap[id].lastname}, ${playerMap[id].firstname}` : `#${id}`).join(', ')
+      const names = conflicts.map((id) => playerMap[id] ? `${playerMap[id].firstname} ${playerMap[id].lastname}` : `#${id}`).join(', ')
       return toast.error(`These players are already on another team for this event: ${names}`)
     }
     const playersJson = {
@@ -353,7 +353,7 @@ export default function TeamsPage() {
                           checked={shuffleSelected.has(p.playerid)}
                           onChange={() => toggleShufflePlayer(p.playerid)}
                         />
-                        <span>{p.lastname}, {p.firstname}</span>
+                        <span>{p.firstname} {p.lastname}</span>
                       </label>
                     ))}
                   </div>
@@ -396,7 +396,7 @@ export default function TeamsPage() {
                   return (
                     <label key={p.playerid} className={`flex items-center gap-2 text-sm ${disabled ? 'opacity-50' : ''}`}>
                       <input type="checkbox" disabled={disabled} checked={selected.includes(p.playerid)} onChange={() => togglePlayer(p.playerid)} />
-                      <span>{p.lastname}, {p.firstname}</span>
+                      <span>{p.firstname} {p.lastname}</span>
                       {disabled && <span className="text-xs text-danger">(on {takenTeam || 'team'})</span>}
                     </label>
                   )
@@ -431,7 +431,7 @@ export default function TeamsPage() {
                 <div className="text-xs text-muted-foreground break-words">
                   {(() => {
                     const ids = (Object.values(t.players) as Array<number | undefined>).filter(Boolean) as number[]
-                    const names = ids.map((id) => playerMap[id] ? `${playerMap[id].lastname}, ${playerMap[id].firstname}` : `#${id}`)
+                    const names = ids.map((id) => playerMap[id] ? `${playerMap[id].firstname} ${playerMap[id].lastname}` : `#${id}`)
                     return names.join('; ')
                   })()}
                 </div>
@@ -466,7 +466,7 @@ export default function TeamsPage() {
                   return (
                     <label key={p.playerid} className={`flex items-center gap-2 text-sm ${disabled ? 'opacity-50' : ''}`}>
                       <input type="checkbox" disabled={disabled} checked={selected.includes(p.playerid)} onChange={() => togglePlayer(p.playerid)} />
-                      <span>{p.lastname}, {p.firstname}</span>
+                      <span>{p.firstname} {p.lastname}</span>
                       {disabled && <span className="text-xs text-danger">(on {takenTeam || 'team'})</span>}
                     </label>
                   )

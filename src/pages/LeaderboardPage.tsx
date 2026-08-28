@@ -141,7 +141,7 @@ export default function LeaderboardPage() {
           const netToPar = +(totals.scoreToPar - hcp).toFixed(1)
           return {
             key: `p-${id}`,
-            name: p ? `${p.lastname}, ${p.firstname}` : `#${id}`,
+            name: p ? `${p.firstname} ${p.lastname}` : `#${id}`,
             subtext: team.teamname,
             hcp,
             netToPar,

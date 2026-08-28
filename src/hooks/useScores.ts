@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import type { NewScore, ScoreRow } from '@/types'
-import { toast } from 'sonner'
 
 export function useScores(eventId?: number, teamId?: number) {
   const [scores, setScores] = useState<ScoreRow[] | null>(null)
@@ -26,6 +25,12 @@ export function useScores(eventId?: number, teamId?: number) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId, teamId])
 
+  // No success toast here on purpose: scoring already gives immediate
+  // in-context feedback (the check goes green, the row updates), and during
+  // a round this fires constantly - individual mode alone batches a whole
+  // foursome's saves into one flush, which used to mean several toasts
+  // stacking up at once. Failures still surface - see the catch blocks in
+  // ScoringPage.
   async function upsertScore(score: NewScore) {
     const data = await api.post<ScoreRow>('/scores/upsert', {
       eventid: score.eventid,
@@ -34,7 +39,6 @@ export function useScores(eventId?: number, teamId?: number) {
       holenumber: score.holenumber,
       strokes: score.strokes,
     })
-    toast.success('Score saved')
     await fetchAll()
     return data
   }
@@ -46,7 +50,6 @@ export function useScores(eventId?: number, teamId?: number) {
       holenumber: hole,
       mode,
     })
-    toast.success('Score cleared')
     await fetchAll()
   }
 

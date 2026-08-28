@@ -105,7 +105,7 @@ export default function ClaimProfilePage() {
               <SelectContent>
                 {players.map((player) => (
                   <SelectItem key={player.playerid} value={player.playerid.toString()}>
-                    {player.lastname}, {player.firstname}
+                    {player.firstname} {player.lastname}
                   </SelectItem>
                 ))}
               </SelectContent>

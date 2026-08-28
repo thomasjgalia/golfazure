@@ -155,7 +155,7 @@ export default function PlayersPage() {
         {players?.map((p) => (
           <div key={p.playerid} className="border rounded px-3 py-1.5 flex items-center justify-between gap-2 active:scale-[0.995] transition">
             <Link to={`/players/${p.playerid}/history`} className="min-w-0 flex items-baseline gap-2 flex-1">
-              <span className="font-medium truncate">{p.lastname}, {p.firstname}</span>
+              <span className="font-medium truncate">{p.firstname} {p.lastname}</span>
               <span className="text-xs text-muted-foreground shrink-0">HC {p.handicap ?? '-'}</span>
             </Link>
             <div className="flex gap-2 shrink-0">
