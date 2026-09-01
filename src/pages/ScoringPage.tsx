@@ -446,30 +446,43 @@ export default function ScoringPage() {
 
       {team && !isIndividual && (() => {
         const parVal = par[currentHole - 1] ?? 4
+        const hasValue = strokes != null
+        // Only used as the +/- baseline when nothing's entered yet - never
+        // shown, so tapping - or + from blank still starts near par without
+        // the pill ever displaying a number nobody actually chose.
         const displayValue = strokes ?? parVal
         const displayToPar = displayValue - parVal
         const scoreBgCls = displayToPar < 0 ? 'bg-success/15 text-success' : displayToPar > 0 ? 'bg-danger/15 text-danger' : 'bg-info/15 text-info'
+        const roundToParCls = totalToPar < 0 ? 'text-success' : totalToPar > 0 ? 'text-danger' : 'text-info'
         return (
         <>
           <div className="border sticky top-0 z-20 bg-white rounded p-3 space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="text-2xl font-bold">Hole {currentHole} • Par {parVal}</div>
-              <div className="text-base">
-                <span>Total: {totalStrokes}/{totalPar} ({totalToPar > 0 ? `+${totalToPar}` : totalToPar})</span>
-              </div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-2xl font-bold">Hole {currentHole}</div>
+              {totalPar > 0 && (
+                <div className={`text-2xl font-bold ${roundToParCls}`}>
+                  ({totalToPar === 0 ? 'E' : totalToPar > 0 ? `+${totalToPar}` : totalToPar})
+                </div>
+              )}
             </div>
             {!canEditScores && (
               <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
                 {isZoneAdmin ? 'Select a team to edit scores' : 'You can only edit scores for teams you are on'}
               </div>
             )}
-            <div className={`rounded-lg px-3 py-2 text-center text-3xl font-bold ${scoreBgCls}`}>
-              {displayValue}
-              <span className="text-xl font-semibold"> ({displayToPar === 0 ? 'E' : displayToPar > 0 ? `+${displayToPar}` : displayToPar})</span>
-            </div>
+            {hasValue ? (
+              <div className={`rounded-lg px-3 py-2 text-center text-3xl font-bold ${scoreBgCls}`}>
+                {displayValue}
+                <span className="text-xl font-semibold"> ({displayToPar === 0 ? 'E' : displayToPar > 0 ? `+${displayToPar}` : displayToPar})</span>
+              </div>
+            ) : (
+              <div className="rounded-lg px-3 py-2 text-center text-2xl font-bold bg-muted text-muted-foreground">
+                Par {parVal}
+              </div>
+            )}
             <div className="grid grid-cols-3 gap-2">
               <Button variant="outline" className="h-16 text-3xl px-0" onClick={() => handleQuickSave(displayValue - 1)} disabled={!canEditScores}>−</Button>
-              <Button variant={displayValue === parVal ? 'default' : 'secondary'} className="h-16 text-lg px-1" onClick={() => handleQuickSave(parVal)} disabled={!canEditScores}>Par</Button>
+              <Button variant={hasValue && displayValue === parVal ? 'default' : 'secondary'} className="h-16 text-lg px-1" onClick={() => handleQuickSave(parVal)} disabled={!canEditScores}>Par</Button>
               <Button variant="outline" className="h-16 text-3xl px-0" onClick={() => handleQuickSave(displayValue + 1)} disabled={!canEditScores}>+</Button>
             </div>
           </div>
@@ -490,7 +503,7 @@ export default function ScoringPage() {
                 return (
                   <button
                     key={h}
-                    className={`border rounded text-sm font-bold h-10 ${colorCls} ${h === currentHole ? 'ring-2 ring-primary' : ''}`}
+                    className={`border rounded text-xs font-bold h-7 ${colorCls} ${h === currentHole ? 'ring-2 ring-primary' : ''}`}
                     onClick={() => handleSelectHole(h)}
                     onContextMenu={(e) => { e.preventDefault(); if (s?.strokes != null && !event?.islocked) { clearScore(eventId, team.teamid, h, 'team'); toast.success(`Cleared hole ${h}`); haptic() } }}
                   >
@@ -517,7 +530,7 @@ export default function ScoringPage() {
                 return (
                   <button
                     key={h}
-                    className={`border rounded text-sm font-bold h-10 ${colorCls} ${h === currentHole ? 'ring-2 ring-primary' : ''}`}
+                    className={`border rounded text-xs font-bold h-7 ${colorCls} ${h === currentHole ? 'ring-2 ring-primary' : ''}`}
                     onClick={() => handleSelectHole(h)}
                     onContextMenu={(e) => { e.preventDefault(); if (s?.strokes != null && !event?.islocked) { clearScore(eventId, team.teamid, h, 'team'); toast.success(`Cleared hole ${h}`); haptic() } }}
                   >

@@ -60,6 +60,12 @@ export default {
         danger: {
           DEFAULT: '#ef4444',
         },
+        // SOL Delco's --color-flag-red - the parent app's header banner
+        // color, used here only for golf's own header to match.
+        'flag-red': {
+          DEFAULT: '#b31942',
+          dark: '#8f1435',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

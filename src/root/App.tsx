@@ -52,7 +52,7 @@ export default function App() {
 
   const profileButton = isProfileClaimed ? (
     <>
-      <div className="text-xs text-muted-foreground hidden md:flex items-center gap-1">
+      <div className="text-xs text-white/80 hidden md:flex items-center gap-1">
         <User className="h-3 w-3" />
         {claimedPlayer?.firstname} {claimedPlayer?.lastname}
       </div>
@@ -72,26 +72,26 @@ export default function App() {
 
   return (
     <div className="flex flex-col overscroll-none" style={{ height: 'var(--app-height, 100dvh)' }}>
-      <header className="shrink-0 border-b bg-white" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      <header className="shrink-0 bg-flag-red" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="container flex h-14 items-center justify-between gap-2">
-          <Link to="/" className="font-semibold shrink-0">
+          <Link to="/" className="font-semibold shrink-0 text-white">
             SOL Golf
           </Link>
 
           {/* Full nav + controls, desktop only - collapses into the hamburger below on mobile. */}
           <nav className="hidden md:flex gap-4 text-sm items-center">
-            <NavLink to="/events" className={({ isActive }) => isActive ? 'text-primary font-medium' : 'text-muted-foreground'}>Events</NavLink>
-            <NavLink to="/players" className={({ isActive }) => isActive ? 'text-primary font-medium' : 'text-muted-foreground'}>Players</NavLink>
+            <NavLink to="/events" className={({ isActive }) => isActive ? 'text-white font-semibold' : 'text-white/70 hover:text-white'}>Events</NavLink>
+            <NavLink to="/players" className={({ isActive }) => isActive ? 'text-white font-semibold' : 'text-white/70 hover:text-white'}>Players</NavLink>
           </nav>
           <div className="hidden md:flex items-center gap-2">
-            <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground shrink-0">
+            <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/10 shrink-0">
               <Link to="/help" aria-label="Help"><HelpCircle className="h-4 w-4" /></Link>
             </Button>
             {/* A player in exactly one zone never needs to think about zones -
                 the switcher only shows up once there's an actual choice to make. */}
             {isProfileClaimed && zones.length > 1 && (
               <Select value={currentZoneId != null ? String(currentZoneId) : undefined} onValueChange={onZonePick}>
-                <SelectTrigger className="h-8 w-auto max-w-[7rem] text-xs">
+                <SelectTrigger className="h-8 w-auto max-w-[7rem] text-xs bg-white">
                   <SelectValue placeholder="Zone" />
                 </SelectTrigger>
                 <SelectContent>
@@ -103,7 +103,7 @@ export default function App() {
               </Select>
             )}
             {isProfileClaimed && zones.length <= 1 && (
-              <Button asChild variant="ghost" size="sm" className="text-xs text-muted-foreground px-2">
+              <Button asChild variant="ghost" size="sm" className="text-xs text-white/80 hover:text-white hover:bg-white/10 px-2">
                 <Link to="/zones/create" aria-label="Create new zone">
                   <Plus className="h-3.5 w-3.5 mr-1" /> New Zone
                 </Link>
@@ -117,7 +117,7 @@ export default function App() {
                 desktop nav above is hidden here. */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden h-9 w-9" aria-label="Menu">
+                <Button variant="ghost" size="icon" className="md:hidden h-9 w-9 text-white/90 hover:text-white hover:bg-white/10" aria-label="Menu">
                   <Menu className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
