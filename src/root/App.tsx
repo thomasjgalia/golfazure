@@ -3,7 +3,8 @@ import { useEffect, useState, ReactNode } from 'react'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { User, Plus, HelpCircle } from 'lucide-react'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
+import { User, Plus, HelpCircle, Menu, Check } from 'lucide-react'
 import { BottomBarContext } from '@/lib/bottomBar'
 
 const CREATE_ZONE_OPTION = '__create__'
@@ -49,20 +50,40 @@ export default function App() {
     setCurrentZone(Number(value))
   }
 
+  const profileButton = isProfileClaimed ? (
+    <>
+      <div className="text-xs text-muted-foreground hidden md:flex items-center gap-1">
+        <User className="h-3 w-3" />
+        {claimedPlayer?.firstname} {claimedPlayer?.lastname}
+      </div>
+      <Button variant="success" size="sm" onClick={releaseProfile}>
+        <User className="h-4 w-4 md:mr-2" />
+        <span className="hidden md:inline">Release</span>
+      </Button>
+    </>
+  ) : (
+    <Link to="/claim">
+      <Button variant="outline" size="sm">
+        <User className="h-4 w-4 md:mr-2" />
+        <span className="hidden md:inline">Claim Profile</span>
+      </Button>
+    </Link>
+  )
+
   return (
     <div className="flex flex-col overscroll-none" style={{ height: 'var(--app-height, 100dvh)' }}>
       <header className="shrink-0 border-b bg-white" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-        <div className="container flex h-14 items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Link to="/" className="font-semibold">
-              SOL Golf
-            </Link>
-          </div>
-          <nav className="flex gap-4 text-sm items-center">
+        <div className="container flex h-14 items-center justify-between gap-2">
+          <Link to="/" className="font-semibold shrink-0">
+            SOL Golf
+          </Link>
+
+          {/* Full nav + controls, desktop only - collapses into the hamburger below on mobile. */}
+          <nav className="hidden md:flex gap-4 text-sm items-center">
             <NavLink to="/events" className={({ isActive }) => isActive ? 'text-primary font-medium' : 'text-muted-foreground'}>Events</NavLink>
             <NavLink to="/players" className={({ isActive }) => isActive ? 'text-primary font-medium' : 'text-muted-foreground'}>Players</NavLink>
           </nav>
-          <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2">
             <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground shrink-0">
               <Link to="/help" aria-label="Help"><HelpCircle className="h-4 w-4" /></Link>
             </Button>
@@ -70,7 +91,7 @@ export default function App() {
                 the switcher only shows up once there's an actual choice to make. */}
             {isProfileClaimed && zones.length > 1 && (
               <Select value={currentZoneId != null ? String(currentZoneId) : undefined} onValueChange={onZonePick}>
-                <SelectTrigger className="h-8 w-20 sm:w-auto max-w-[7rem] text-xs">
+                <SelectTrigger className="h-8 w-auto max-w-[7rem] text-xs">
                   <SelectValue placeholder="Zone" />
                 </SelectTrigger>
                 <SelectContent>
@@ -84,30 +105,47 @@ export default function App() {
             {isProfileClaimed && zones.length <= 1 && (
               <Button asChild variant="ghost" size="sm" className="text-xs text-muted-foreground px-2">
                 <Link to="/zones/create" aria-label="Create new zone">
-                  <Plus className="h-3.5 w-3.5 sm:mr-1" />
-                  <span className="hidden sm:inline">New Zone</span>
+                  <Plus className="h-3.5 w-3.5 mr-1" /> New Zone
                 </Link>
               </Button>
             )}
-            {isProfileClaimed ? (
-              <>
-                <div className="text-xs text-muted-foreground hidden md:flex items-center gap-1">
-                  <User className="h-3 w-3" />
-                  {claimedPlayer?.firstname} {claimedPlayer?.lastname}
-                </div>
-                <Button variant="success" size="sm" onClick={releaseProfile}>
-                  <User className="h-4 w-4 md:mr-2" />
-                  <span className="hidden md:inline">Release</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Mobile only: Events/Players/Help/Zones collapse into one menu
+                instead of crowding the header - this is the whole reason the
+                desktop nav above is hidden here. */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden h-9 w-9" aria-label="Menu">
+                  <Menu className="h-5 w-5" />
                 </Button>
-              </>
-            ) : (
-              <Link to="/claim">
-                <Button variant="outline" size="sm">
-                  <User className="h-4 w-4 md:mr-2" />
-                  <span className="hidden md:inline">Claim Profile</span>
-                </Button>
-              </Link>
-            )}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="md:hidden">
+                <DropdownMenuItem asChild><Link to="/events">Events</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link to="/players">Players</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link to="/help">Help</Link></DropdownMenuItem>
+                {isProfileClaimed && zones.length > 1 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {zones.map((z) => (
+                      <DropdownMenuItem key={z.zoneid} onClick={() => setCurrentZone(z.zoneid)} className="justify-between">
+                        {z.name}
+                        {z.zoneid === currentZoneId && <Check className="h-4 w-4" />}
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                )}
+                {isProfileClaimed && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild><Link to="/zones/create">+ New Zone</Link></DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {profileButton}
           </div>
         </div>
       </header>

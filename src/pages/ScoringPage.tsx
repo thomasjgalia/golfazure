@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth'
 import { useBottomBar } from '@/lib/bottomBar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { colorForScore, stablefordPoints } from '@/utils/format'
+import { stablefordPoints } from '@/utils/format'
 import type { PlayerRow } from '@/types'
 import { toast } from 'sonner'
 import { Check } from 'lucide-react'
@@ -444,11 +444,16 @@ export default function ScoringPage() {
         </>
       )}
 
-      {team && !isIndividual && (
+      {team && !isIndividual && (() => {
+        const parVal = par[currentHole - 1] ?? 4
+        const displayValue = strokes ?? parVal
+        const displayToPar = displayValue - parVal
+        const scoreBgCls = displayToPar < 0 ? 'bg-success/15 text-success' : displayToPar > 0 ? 'bg-danger/15 text-danger' : 'bg-info/15 text-info'
+        return (
         <>
           <div className="border sticky top-0 z-20 bg-white rounded p-3 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="text-2xl font-bold">Hole {currentHole} • Par {par[currentHole - 1] ?? 4}</div>
+              <div className="text-2xl font-bold">Hole {currentHole} • Par {parVal}</div>
               <div className="text-base">
                 <span>Total: {totalStrokes}/{totalPar} ({totalToPar > 0 ? `+${totalToPar}` : totalToPar})</span>
               </div>
@@ -458,25 +463,14 @@ export default function ScoringPage() {
                 {isZoneAdmin ? 'Select a team to edit scores' : 'You can only edit scores for teams you are on'}
               </div>
             )}
-            <div className="grid grid-cols-5 gap-1.5">
-              <Button className="h-14 text-lg px-1" variant={strokes === ((par[currentHole - 1] ?? 4) - 2) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) - 2)} disabled={!canEditScores}>-2</Button>
-              <Button className="h-14 text-lg px-1" variant={strokes === ((par[currentHole - 1] ?? 4) - 1) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) - 1)} disabled={!canEditScores}>-1</Button>
-              <Button className="h-14 text-lg px-1" variant={strokes === (par[currentHole - 1] ?? 4) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4))} disabled={!canEditScores}>Par</Button>
-              <Button className="h-14 text-lg px-1" variant={strokes === ((par[currentHole - 1] ?? 4) + 1) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) + 1)} disabled={!canEditScores}>+1</Button>
-              <Button className="h-14 text-lg px-1" variant={strokes === ((par[currentHole - 1] ?? 4) + 2) ? 'default' : 'secondary'} onClick={() => handleQuickSave((par[currentHole - 1] ?? 4) + 2)} disabled={!canEditScores}>+2</Button>
+            <div className={`rounded-lg px-3 py-2 text-center text-3xl font-bold ${scoreBgCls}`}>
+              {displayValue}
+              <span className="text-xl font-semibold"> ({displayToPar === 0 ? 'E' : displayToPar > 0 ? `+${displayToPar}` : displayToPar})</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" className="h-16 w-16 shrink-0 text-3xl px-0" onClick={() => handleQuickSave((strokes ?? (par[currentHole - 1] ?? 4)) - 1)} disabled={!canEditScores}>−</Button>
-              <Input
-                type="number"
-                className="h-16 min-w-0 flex-1 text-center text-3xl font-bold px-1"
-                value={strokes ?? ''}
-                onChange={(e) => setStrokes(e.target.value ? Number(e.target.value) : null)}
-                onBlur={() => { if (strokes != null) handleQuickSave(strokes) }}
-                onKeyDown={(e) => { if (e.key === 'Enter' && strokes != null) handleQuickSave(strokes) }}
-                disabled={!canEditScores}
-              />
-              <Button variant="outline" className="h-16 w-16 shrink-0 text-3xl px-0" onClick={() => handleQuickSave((strokes ?? (par[currentHole - 1] ?? 4)) + 1)} disabled={!canEditScores}>+</Button>
+            <div className="grid grid-cols-3 gap-2">
+              <Button variant="outline" className="h-16 text-3xl px-0" onClick={() => handleQuickSave(displayValue - 1)} disabled={!canEditScores}>−</Button>
+              <Button variant={displayValue === parVal ? 'default' : 'secondary'} className="h-16 text-lg px-1" onClick={() => handleQuickSave(parVal)} disabled={!canEditScores}>Par</Button>
+              <Button variant="outline" className="h-16 text-3xl px-0" onClick={() => handleQuickSave(displayValue + 1)} disabled={!canEditScores}>+</Button>
             </div>
           </div>
 
@@ -496,18 +490,11 @@ export default function ScoringPage() {
                 return (
                   <button
                     key={h}
-                    className={`relative border rounded p-3 text-base min-h-[3.75rem] ${colorCls} ${h === currentHole ? 'ring-2 ring-primary' : ''}`}
+                    className={`border rounded text-sm font-bold h-10 ${colorCls} ${h === currentHole ? 'ring-2 ring-primary' : ''}`}
                     onClick={() => handleSelectHole(h)}
                     onContextMenu={(e) => { e.preventDefault(); if (s?.strokes != null && !event?.islocked) { clearScore(eventId, team.teamid, h, 'team'); toast.success(`Cleared hole ${h}`); haptic() } }}
                   >
-                    <div className="font-bold">{h}</div>
-                    <div className="text-xs text-muted-foreground">Par {parVal}</div>
-                    {toPar != null && (
-                      <div className={`text-sm font-semibold ${colorForScore(toPar)}`}>{toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : toPar}</div>
-                    )}
-                    {strokesVal != null && (
-                      <div className="absolute top-1 right-1 text-xs text-muted-foreground">{strokesVal} ({toPar === 0 ? 'E' : toPar! > 0 ? `+${toPar}` : toPar})</div>
-                    )}
+                    {h}
                   </button>
                 )
               })}
@@ -530,18 +517,11 @@ export default function ScoringPage() {
                 return (
                   <button
                     key={h}
-                    className={`relative border rounded p-3 text-base min-h-[3.75rem] ${colorCls} ${h === currentHole ? 'ring-2 ring-primary' : ''}`}
+                    className={`border rounded text-sm font-bold h-10 ${colorCls} ${h === currentHole ? 'ring-2 ring-primary' : ''}`}
                     onClick={() => handleSelectHole(h)}
                     onContextMenu={(e) => { e.preventDefault(); if (s?.strokes != null && !event?.islocked) { clearScore(eventId, team.teamid, h, 'team'); toast.success(`Cleared hole ${h}`); haptic() } }}
                   >
-                    <div className="font-bold">{h}</div>
-                    <div className="text-xs text-muted-foreground">Par {parVal}</div>
-                    {toPar != null && (
-                      <div className={`text-sm font-semibold ${colorForScore(toPar)}`}>{toPar === 0 ? 'E' : toPar > 0 ? `+${toPar}` : toPar}</div>
-                    )}
-                    {strokesVal != null && (
-                      <div className="absolute top-1 right-1 text-xs text-muted-foreground">{strokesVal} ({toPar === 0 ? 'E' : toPar! > 0 ? `+${toPar}` : toPar})</div>
-                    )}
+                    {h}
                   </button>
                 )
               })}
@@ -551,7 +531,8 @@ export default function ScoringPage() {
           )}
         </div>
         </>
-      )}
+        )
+      })()}
     </div>
   )
 }
