@@ -348,8 +348,8 @@ export default function ScoringPage() {
     if (!team || !isIndividual) return null
     return (
       <div className="grid grid-cols-2 gap-2">
-        <Button variant="ghost" className="h-14 text-lg" disabled={holes === 0} onClick={() => goToHoleIndividual(Math.max(1, currentHole - 1))}>Prev</Button>
-        <Button variant="ghost" className="h-14 text-lg" disabled={holes === 0} onClick={() => goToHoleIndividual(Math.min(holes || 1, currentHole + 1))}>Next</Button>
+        <Button variant="ghost" className="h-10 text-base" disabled={holes === 0} onClick={() => goToHoleIndividual(Math.max(1, currentHole - 1))}>Prev</Button>
+        <Button variant="ghost" className="h-10 text-base" disabled={holes === 0} onClick={() => goToHoleIndividual(Math.min(holes || 1, currentHole + 1))}>Next</Button>
       </div>
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -359,10 +359,10 @@ export default function ScoringPage() {
     if (!team || isIndividual) return null
     return (
       <div className="grid grid-cols-4 gap-2">
-        <Button variant="ghost" className="h-14 text-base" disabled={holes === 0} onClick={() => handleSelectHole(Math.max(1, currentHole - 1))}>Prev</Button>
-        <Button variant="outline" className="h-14 text-base" onClick={() => { clear(); haptic() }} disabled={!!event?.islocked || !canEditScores}>Clear</Button>
-        <Button className="h-14 text-base" onClick={() => { save(); haptic() }} disabled={!!event?.islocked || !canEditScores}>Save</Button>
-        <Button variant="ghost" className="h-14 text-base" disabled={holes === 0} onClick={() => handleSelectHole(Math.min(holes || 1, currentHole + 1))}>Next</Button>
+        <Button variant="ghost" className="h-10 text-sm" disabled={holes === 0} onClick={() => handleSelectHole(Math.max(1, currentHole - 1))}>Prev</Button>
+        <Button variant="outline" className="h-10 text-sm" onClick={() => { clear(); haptic() }} disabled={!!event?.islocked || !canEditScores}>Clear</Button>
+        <Button className="h-10 text-sm" onClick={() => { save(); haptic() }} disabled={!!event?.islocked || !canEditScores}>Save</Button>
+        <Button variant="ghost" className="h-10 text-sm" disabled={holes === 0} onClick={() => handleSelectHole(Math.min(holes || 1, currentHole + 1))}>Next</Button>
       </div>
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -405,9 +405,9 @@ export default function ScoringPage() {
       {team && isIndividual && (
         <>
           <div className="border sticky top-0 z-20 bg-white rounded p-2 space-y-1.5">
-            <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-              <div className="text-2xl font-bold">Hole {currentHole} • Par {par[currentHole - 1] ?? 4}</div>
-              <div className="text-base text-muted-foreground">{enteredCount}/{teamPlayers.length} entered</div>
+            <div className="text-center">
+              <div className="text-4xl font-bold">Hole {currentHole}</div>
+              <div className="text-sm text-muted-foreground">Par {par[currentHole - 1] ?? 4} · {enteredCount}/{teamPlayers.length} entered</div>
             </div>
             {!canEditScores && (
               <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
@@ -457,11 +457,11 @@ export default function ScoringPage() {
         return (
         <>
           <div className="border sticky top-0 z-20 bg-white rounded p-3 space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-2xl font-bold">Hole {currentHole}</div>
+            <div className="text-center">
+              <div className="text-4xl font-bold">Hole {currentHole}</div>
               {totalPar > 0 && (
-                <div className={`text-2xl font-bold ${roundToParCls}`}>
-                  ({totalToPar === 0 ? 'E' : totalToPar > 0 ? `+${totalToPar}` : totalToPar})
+                <div className={`text-sm font-semibold ${roundToParCls}`}>
+                  Round: {totalToPar === 0 ? 'E' : totalToPar > 0 ? `+${totalToPar}` : totalToPar}
                 </div>
               )}
             </div>
@@ -481,9 +481,9 @@ export default function ScoringPage() {
               </div>
             )}
             <div className="grid grid-cols-3 gap-2">
-              <Button variant="outline" className="h-16 text-3xl px-0" onClick={() => handleQuickSave(displayValue - 1)} disabled={!canEditScores}>−</Button>
-              <Button variant={hasValue && displayValue === parVal ? 'default' : 'secondary'} className="h-16 text-lg px-1" onClick={() => handleQuickSave(parVal)} disabled={!canEditScores}>Par</Button>
-              <Button variant="outline" className="h-16 text-3xl px-0" onClick={() => handleQuickSave(displayValue + 1)} disabled={!canEditScores}>+</Button>
+              <Button variant="outline" className="h-11 text-2xl px-0" onClick={() => handleQuickSave(displayValue - 1)} disabled={!canEditScores}>−</Button>
+              <Button variant={hasValue && displayValue === parVal ? 'default' : 'secondary'} className="h-11 text-base px-1" onClick={() => handleQuickSave(parVal)} disabled={!canEditScores}>Par</Button>
+              <Button variant="outline" className="h-11 text-2xl px-0" onClick={() => handleQuickSave(displayValue + 1)} disabled={!canEditScores}>+</Button>
             </div>
           </div>
 
