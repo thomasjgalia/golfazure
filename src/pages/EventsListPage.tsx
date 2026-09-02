@@ -95,7 +95,7 @@ export default function EventsListPage() {
                     <SelectValue placeholder="Select format" />
                   </SelectTrigger>
                   <SelectContent>
-                    {['Scramble', 'Best Ball', 'Stroke Play', 'Match Play', 'Stableford'].map((f) => (
+                    {['Scramble', 'Best Ball', 'Stroke Play', 'Stableford'].map((f) => (
                       <SelectItem key={f} value={f}>{f}</SelectItem>
                     ))}
                   </SelectContent>

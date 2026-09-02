@@ -471,12 +471,12 @@ export default function ScoringPage() {
               </div>
             )}
             {hasValue ? (
-              <div className={`rounded-lg px-3 py-2 text-center text-3xl font-bold ${scoreBgCls}`}>
+              <div className={`rounded-lg px-3 py-2 text-center text-4xl font-bold ${scoreBgCls}`}>
                 {displayValue}
-                <span className="text-xl font-semibold"> ({displayToPar === 0 ? 'E' : displayToPar > 0 ? `+${displayToPar}` : displayToPar})</span>
+                <span className="text-2xl font-semibold"> ({displayToPar === 0 ? 'E' : displayToPar > 0 ? `+${displayToPar}` : displayToPar})</span>
               </div>
             ) : (
-              <div className="rounded-lg px-3 py-2 text-center text-2xl font-bold bg-muted text-muted-foreground">
+              <div className="rounded-lg px-3 py-2 text-center text-4xl font-bold bg-muted text-muted-foreground">
                 Par {parVal}
               </div>
             )}

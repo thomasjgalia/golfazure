@@ -38,7 +38,7 @@ export default function TeamsPage() {
   const [editingTeamId, setEditingTeamId] = useState<number | null>(null)
 
   const [openShuffle, setOpenShuffle] = useState(false)
-  const [shuffleTeamSize, setShuffleTeamSize] = useState<3 | 4>(4)
+  const [shuffleTeamSize, setShuffleTeamSize] = useState<2 | 3 | 4>(4)
   const [shuffleSelected, setShuffleSelected] = useState<Set<number>>(new Set())
   const [shuffleReshuffle, setShuffleReshuffle] = useState(false)
   const [shuffling, setShuffling] = useState(false)
@@ -330,11 +330,12 @@ export default function TeamsPage() {
               )}
               <div>
                 <Label>Team size</Label>
-                <Select value={String(shuffleTeamSize)} onValueChange={(v) => setShuffleTeamSize(Number(v) as 3 | 4)}>
+                <Select value={String(shuffleTeamSize)} onValueChange={(v) => setShuffleTeamSize(Number(v) as 2 | 3 | 4)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="4">4 players</SelectItem>
                     <SelectItem value="3">3 players</SelectItem>
+                    <SelectItem value="2">2 players</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -30,10 +30,10 @@ export function shuffle<T>(arr: T[]): T[] {
   return out
 }
 
-// Splits `n` players into teams of `preferredSize` (3 or 4), spreading any
-// remainder across teams evenly rather than leaving one short-handed team.
-// e.g. n=10, preferredSize=4 -> [4, 3, 3], not [4, 4, 2].
-export function computeTeamSizes(n: number, preferredSize: 3 | 4): number[] {
+// Splits `n` players into teams of `preferredSize` (2, 3, or 4), spreading
+// any remainder across teams evenly rather than leaving one short-handed
+// team. e.g. n=10, preferredSize=4 -> [4, 3, 3], not [4, 4, 2].
+export function computeTeamSizes(n: number, preferredSize: 2 | 3 | 4): number[] {
   if (n <= 0) return []
   const numTeams = Math.max(1, Math.ceil(n / preferredSize))
   const base = Math.floor(n / numTeams)

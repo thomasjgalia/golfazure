@@ -61,7 +61,6 @@ export default function HelpPage() {
         <ul className="list-disc pl-5 space-y-1">
           <li><strong className="text-foreground">Scramble</strong> - one shared score per team per hole. Lowest total wins.</li>
           <li><strong className="text-foreground">Best Ball</strong> - same one-score-per-team entry as Scramble; use it when your house rules already settle on the team's best ball before it's entered.</li>
-          <li><strong className="text-foreground">Match Play</strong> - one score per team per hole, head-to-head.</li>
           <li><strong className="text-foreground">Stroke Play</strong> - every player enters their own score each hole. Lowest total score-to-par wins.</li>
           <li><strong className="text-foreground">Stableford</strong> - every player enters their own score each hole, but points (birdie = 3, par = 2, bogey = 1, etc.) decide the winner - highest total points wins, the opposite of every other format here.</li>
         </ul>

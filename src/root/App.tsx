@@ -163,7 +163,7 @@ export default function App() {
           className="shrink-0 border-t bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/75"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
-          <div className="container py-2">{bottomBar}</div>
+          <div className="container py-1">{bottomBar}</div>
         </footer>
       )}
     </div>
